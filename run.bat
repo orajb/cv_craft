@@ -1,0 +1,57 @@
+@echo off
+REM Job Hunter - Windows Launcher
+REM Usage: Double-click run.bat or run from command prompt
+
+echo.
+echo 🎯 Job Hunter - AI-Powered CV Generator
+echo ========================================
+echo.
+
+REM Check Python
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ Python not found!
+    echo.
+    echo Please install Python 3.10 or higher from:
+    echo https://www.python.org/downloads/
+    echo.
+    echo Make sure to check "Add Python to PATH" during installation.
+    pause
+    exit /b 1
+)
+
+echo ✓ Python found
+
+REM Create venv if needed
+if not exist "venv" (
+    echo → Creating virtual environment...
+    python -m venv venv
+    echo ✓ Virtual environment created
+) else (
+    echo ✓ Virtual environment exists
+)
+
+REM Activate venv
+call venv\Scripts\activate.bat
+
+REM Install dependencies if needed
+python -c "import streamlit" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo → Installing dependencies...
+    pip install --upgrade pip -q
+    pip install -r requirements.txt -q
+    echo ✓ Dependencies installed
+) else (
+    echo ✓ Dependencies ready
+)
+
+REM Create data directory
+if not exist "data" mkdir data
+
+echo.
+echo 🚀 Starting Job Hunter...
+echo    Opening in your browser at http://localhost:8501
+echo    Press Ctrl+C to stop
+echo.
+
+streamlit run app.py --server.headless=true
