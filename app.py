@@ -16,6 +16,7 @@ from data_manager import (
     add_education, update_education, delete_education,
     add_project, update_project, delete_project,
     add_certification, update_certification, delete_certification,
+    add_award, update_award, delete_award,
     update_contact, update_summary, update_skills,
     load_templates, save_template, update_template, delete_template,
     set_default_template, get_template, get_default_template,
@@ -193,9 +194,13 @@ def init_session_state():
         st.session_state.proj_form_key = 0
     if "cert_form_key" not in st.session_state:
         st.session_state.cert_form_key = 0
-    # Editing state for certifications
+    if "award_form_key" not in st.session_state:
+        st.session_state.award_form_key = 0
+    # Editing state for certifications and awards
     if "editing_cert_id" not in st.session_state:
         st.session_state.editing_cert_id = None
+    if "editing_award_id" not in st.session_state:
+        st.session_state.editing_award_id = None
 
 init_session_state()
 
@@ -701,6 +706,86 @@ with tab1:
                     delete_certification(cert['id'])
                     if st.session_state.editing_cert_id == cert["id"]:
                         st.session_state.editing_cert_id = None
+                    st.rerun()
+    
+    # Awards
+    with st.expander("🏆 Awards & Honors"):
+        awards = experiences.get("awards", [])
+        
+        # Check if editing
+        editing_award = None
+        if st.session_state.editing_award_id:
+            editing_award = next((a for a in awards if a["id"] == st.session_state.editing_award_id), None)
+        
+        if editing_award:
+            st.subheader(f"✏️ Editing: {editing_award['name']}")
+            if st.button("Cancel Edit", key="cancel_award_edit", type="secondary"):
+                st.session_state.editing_award_id = None
+                st.session_state.award_form_key += 1
+                st.rerun()
+        else:
+            st.subheader("Add Award")
+        
+        with st.form(f"add_award_{st.session_state.award_form_key}"):
+            col1, col2 = st.columns(2)
+            with col1:
+                award_name = st.text_input("Award Name", value=editing_award["name"] if editing_award else "")
+                award_issuer = st.text_input("Issuing Organization", value=editing_award["issuer"] if editing_award else "")
+            with col2:
+                award_date = st.text_input("Date Received", value=editing_award.get("date", "") if editing_award else "")
+            
+            award_desc = st.text_area(
+                "Description (optional)",
+                value=editing_award.get("description", "") if editing_award else "",
+                height=80,
+                help="Brief description of the award or why you received it"
+            )
+            
+            button_label = "Update Award" if editing_award else "Add Award"
+            if st.form_submit_button(button_label, use_container_width=True, type="primary"):
+                if award_name and award_issuer:
+                    if editing_award:
+                        update_award(editing_award["id"], {
+                            "name": award_name,
+                            "issuer": award_issuer,
+                            "date": award_date,
+                            "description": award_desc
+                        })
+                        st.session_state.editing_award_id = None
+                        st.session_state.award_form_key += 1
+                        st.toast("✅ Award updated!", icon="✏️")
+                    else:
+                        add_award(
+                            name=award_name,
+                            issuer=award_issuer,
+                            date=award_date,
+                            description=award_desc
+                        )
+                        st.session_state.award_form_key += 1
+                        st.toast("✅ Award added!", icon="🏆")
+                    st.rerun()
+        
+        for award in awards:
+            is_editing = st.session_state.editing_award_id == award["id"]
+            if is_editing:
+                st.markdown(f"**{award['name']}** — {award['issuer']} ({award['date']}) 📝")
+            else:
+                st.markdown(f"**{award['name']}** — {award['issuer']} ({award['date']})")
+            
+            if award.get("description"):
+                st.caption(award["description"])
+            
+            col1, col2, col3 = st.columns([1, 1, 4])
+            with col1:
+                if st.button("✏️ Edit", key=f"edit_award_{award['id']}"):
+                    st.session_state.editing_award_id = award["id"]
+                    st.session_state.award_form_key += 1
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Delete", key=f"del_award_{award['id']}"):
+                    delete_award(award['id'])
+                    if st.session_state.editing_award_id == award["id"]:
+                        st.session_state.editing_award_id = None
                     st.rerun()
 
 # =============================================================================

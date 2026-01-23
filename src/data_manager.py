@@ -67,6 +67,7 @@ def get_default_experiences_structure() -> dict:
         },
         "projects": [],
         "certifications": [],
+        "awards": [],
         "other": []
     }
 
@@ -270,6 +271,57 @@ def delete_certification(cert_id: str):
     data["certifications"] = [
         cert for cert in data["certifications"] if cert["id"] != cert_id
     ]
+    save_experiences(data)
+
+
+def add_award(
+    name: str,
+    issuer: str,
+    date: str,
+    description: str = ""
+) -> str:
+    """Add an award entry. Returns the ID."""
+    data = load_experiences()
+    
+    # Ensure awards list exists (for existing data files)
+    if "awards" not in data:
+        data["awards"] = []
+    
+    award_id = str(uuid.uuid4())[:8]
+    
+    data["awards"].append({
+        "id": award_id,
+        "name": name,
+        "issuer": issuer,
+        "date": date,
+        "description": description,
+        "created_at": datetime.now().isoformat()
+    })
+    
+    save_experiences(data)
+    return award_id
+
+
+def update_award(award_id: str, updates: dict):
+    """Update an award entry."""
+    data = load_experiences()
+    if "awards" not in data:
+        data["awards"] = []
+    for award in data["awards"]:
+        if award["id"] == award_id:
+            award.update(updates)
+            award["updated_at"] = datetime.now().isoformat()
+            break
+    save_experiences(data)
+
+
+def delete_award(award_id: str):
+    """Delete an award entry."""
+    data = load_experiences()
+    if "awards" in data:
+        data["awards"] = [
+            award for award in data["awards"] if award["id"] != award_id
+        ]
     save_experiences(data)
 
 

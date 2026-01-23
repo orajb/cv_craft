@@ -224,6 +224,7 @@ Use these exact placeholders for content sections:
 - {{{{SKILLS}}}} - Skills section (will be filled with HTML)
 - {{{{PROJECTS}}}} - Projects section (will be filled with HTML)
 - {{{{CERTIFICATIONS}}}} - Certifications section (will be filled with HTML)
+- {{{{AWARDS}}}} - Awards & honors section (will be filled with HTML)
 
 Output only the HTML template, nothing else.
 """
@@ -301,6 +302,15 @@ def _format_experiences(experiences: dict) -> str:
         lines.append("### CERTIFICATIONS:")
         for cert in certs:
             lines.append(f"   • {cert['name']} - {cert['issuer']} ({cert['date']})")
+        lines.append("")
+    
+    # Awards
+    awards = experiences.get("awards", [])
+    if awards:
+        lines.append("### AWARDS & HONORS:")
+        for award in awards:
+            desc = f" - {award['description']}" if award.get('description') else ""
+            lines.append(f"   • {award['name']} - {award['issuer']} ({award['date']}){desc}")
         lines.append("")
     
     return "\n".join(lines)

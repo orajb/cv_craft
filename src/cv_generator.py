@@ -211,6 +211,11 @@ def get_default_template_html() -> str:
         <h2>Certifications</h2>
         {{CERTIFICATIONS}}
     </section>
+    
+    <section id="awards">
+        <h2>Awards & Honors</h2>
+        {{AWARDS}}
+    </section>
 </body>
 </html>'''
 
@@ -318,6 +323,10 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     # Certifications
     certs_html = _format_certs_html(experiences.get("certifications", []))
     html = html.replace("{{CERTIFICATIONS}}", certs_html)
+    
+    # Awards
+    awards_html = _format_awards_html(experiences.get("awards", []))
+    html = html.replace("{{AWARDS}}", awards_html)
     
     # Remove empty sections
     html = _remove_empty_sections(html)
@@ -445,6 +454,29 @@ def _format_certs_html(certifications: list) -> str:
     return "\n".join(html_parts)
 
 
+def _format_awards_html(awards: list) -> str:
+    """Format awards as HTML."""
+    if not awards:
+        return ""
+    
+    html_parts = ['<ul class="certs-list">']  # Reuse certs-list styling
+    
+    for award in awards:
+        desc = ""
+        if award.get("description"):
+            desc = f" — {award['description']}"
+        
+        html_parts.append(f'''
+        <li>
+            <span class="cert-name">{award.get("name", "")}</span> - 
+            {award.get("issuer", "")} ({award.get("date", "")}){desc}
+        </li>
+        ''')
+    
+    html_parts.append('</ul>')
+    return "\n".join(html_parts)
+
+
 def _remove_empty_sections(html: str) -> str:
     """Remove sections that have no content."""
     # Pattern to match empty sections
@@ -455,6 +487,7 @@ def _remove_empty_sections(html: str) -> str:
         r'<section id="skills">.*?<h2>Skills</h2>\s*</section>',
         r'<section id="projects">.*?<h2>Projects</h2>\s*</section>',
         r'<section id="certifications">.*?<h2>Certifications</h2>\s*</section>',
+        r'<section id="awards">.*?<h2>Awards & Honors</h2>\s*</section>',
     ]
     
     for pattern in patterns:
