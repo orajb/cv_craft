@@ -184,6 +184,15 @@ def init_session_state():
         st.session_state.editing_edu_id = None
     if "editing_proj_id" not in st.session_state:
         st.session_state.editing_proj_id = None
+    # Form counters for clearing forms after submission
+    if "work_exp_form_key" not in st.session_state:
+        st.session_state.work_exp_form_key = 0
+    if "edu_form_key" not in st.session_state:
+        st.session_state.edu_form_key = 0
+    if "proj_form_key" not in st.session_state:
+        st.session_state.proj_form_key = 0
+    if "cert_form_key" not in st.session_state:
+        st.session_state.cert_form_key = 0
 
 init_session_state()
 
@@ -282,13 +291,13 @@ with tab1:
             github = st.text_input("GitHub URL", value=contact.get("github", ""))
             website = st.text_input("Website/Portfolio", value=contact.get("website", ""))
         
-        if st.button("Save Contact Info", key="save_contact"):
+        if st.button("Save Contact Info", key="save_contact", type="primary"):
             update_contact({
                 "name": name, "email": email, "phone": phone,
                 "location": location, "linkedin": linkedin,
                 "github": github, "website": website
             })
-            st.success("Contact information saved!")
+            st.toast("✅ Contact information saved!", icon="👤")
             st.rerun()
     
     # Professional Summary
@@ -298,9 +307,9 @@ with tab1:
             value=experiences.get("summary", ""),
             height=100
         )
-        if st.button("Save Summary", key="save_summary"):
+        if st.button("Save Summary", key="save_summary", type="primary"):
             update_summary(summary)
-            st.success("Summary saved!")
+            st.toast("✅ Summary saved!", icon="📋")
             st.rerun()
     
     # Work Experience
@@ -309,7 +318,7 @@ with tab1:
         
         # Add new experience form
         st.subheader("Add New Experience")
-        with st.form("add_work_exp"):
+        with st.form(f"add_work_exp_{st.session_state.work_exp_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
                 new_company = st.text_input("Company")
@@ -326,7 +335,7 @@ with tab1:
                 height=150
             )
             
-            if st.form_submit_button("Add Experience", use_container_width=True):
+            if st.form_submit_button("Add Experience", use_container_width=True, type="primary"):
                 if new_company and new_role:
                     bullets = [b.strip() for b in new_bullets.split("\n") if b.strip()]
                     add_work_experience(
@@ -338,7 +347,8 @@ with tab1:
                         bullets=bullets,
                         is_current=new_current
                     )
-                    st.success(f"Added experience at {new_company}!")
+                    st.session_state.work_exp_form_key += 1  # Clear form
+                    st.toast(f"✅ Added experience at {new_company}!", icon="🎉")
                     st.rerun()
                 else:
                     st.error("Company and Role are required.")
@@ -373,7 +383,7 @@ with tab1:
         edu_list = experiences.get("education", [])
         
         st.subheader("Add Education")
-        with st.form("add_education"):
+        with st.form(f"add_education_{st.session_state.edu_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
                 edu_institution = st.text_input("Institution")
@@ -386,7 +396,7 @@ with tab1:
             
             edu_highlights = st.text_area("Highlights (one per line, optional)")
             
-            if st.form_submit_button("Add Education", use_container_width=True):
+            if st.form_submit_button("Add Education", use_container_width=True, type="primary"):
                 if edu_institution and edu_degree:
                     highlights = [h.strip() for h in edu_highlights.split("\n") if h.strip()]
                     add_education(
@@ -398,7 +408,8 @@ with tab1:
                         gpa=edu_gpa,
                         highlights=highlights
                     )
-                    st.success("Education added!")
+                    st.session_state.edu_form_key += 1  # Clear form
+                    st.toast("✅ Education added!", icon="🎓")
                     st.rerun()
         
         # List education
@@ -438,14 +449,14 @@ with tab1:
                 height=100
             )
         
-        if st.button("Save Skills", key="save_skills"):
+        if st.button("Save Skills", key="save_skills", type="primary"):
             update_skills({
                 "technical": [s.strip() for s in technical.split(",") if s.strip()],
                 "tools": [s.strip() for s in tools.split(",") if s.strip()],
                 "soft": [s.strip() for s in soft.split(",") if s.strip()],
                 "languages": [s.strip() for s in languages.split(",") if s.strip()]
             })
-            st.success("Skills saved!")
+            st.toast("✅ Skills saved!", icon="🛠️")
             st.rerun()
     
     # Projects
@@ -453,14 +464,14 @@ with tab1:
         projects = experiences.get("projects", [])
         
         st.subheader("Add Project")
-        with st.form("add_project"):
+        with st.form(f"add_project_{st.session_state.proj_form_key}"):
             proj_name = st.text_input("Project Name")
             proj_desc = st.text_area("Description", height=80)
             proj_tech = st.text_input("Technologies (comma-separated)")
             proj_url = st.text_input("URL (optional)")
             proj_bullets = st.text_area("Key Achievements (one per line)")
             
-            if st.form_submit_button("Add Project", use_container_width=True):
+            if st.form_submit_button("Add Project", use_container_width=True, type="primary"):
                 if proj_name:
                     bullets = [b.strip() for b in proj_bullets.split("\n") if b.strip()]
                     tech_list = [t.strip() for t in proj_tech.split(",") if t.strip()]
@@ -471,7 +482,8 @@ with tab1:
                         url=proj_url,
                         bullets=bullets
                     )
-                    st.success("Project added!")
+                    st.session_state.proj_form_key += 1  # Clear form
+                    st.toast("✅ Project added!", icon="🚀")
                     st.rerun()
         
         for proj in projects:
@@ -488,7 +500,7 @@ with tab1:
         certs = experiences.get("certifications", [])
         
         st.subheader("Add Certification")
-        with st.form("add_cert"):
+        with st.form(f"add_cert_{st.session_state.cert_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
                 cert_name = st.text_input("Certification Name")
@@ -497,7 +509,7 @@ with tab1:
                 cert_date = st.text_input("Date Obtained")
                 cert_url = st.text_input("Credential URL (optional)")
             
-            if st.form_submit_button("Add Certification", use_container_width=True):
+            if st.form_submit_button("Add Certification", use_container_width=True, type="primary"):
                 if cert_name and cert_issuer:
                     add_certification(
                         name=cert_name,
@@ -505,7 +517,8 @@ with tab1:
                         date=cert_date,
                         url=cert_url
                     )
-                    st.success("Certification added!")
+                    st.session_state.cert_form_key += 1  # Clear form
+                    st.toast("✅ Certification added!", icon="📜")
                     st.rerun()
         
         for cert in certs:
