@@ -285,14 +285,21 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     html = html.replace("{{CONTACT_PHONE}}", contact.get("phone", ""))
     html = html.replace("{{CONTACT_LOCATION}}", contact.get("location", ""))
     
-    # Contact links
+    # Contact links - display readable URLs
     links = []
     if contact.get("linkedin"):
-        links.append(f'<a href="{contact["linkedin"]}">LinkedIn</a>')
+        linkedin_url = contact["linkedin"]
+        # Create readable display (remove https://, www.)
+        linkedin_display = linkedin_url.replace("https://", "").replace("http://", "").replace("www.", "")
+        links.append(f'<a href="{linkedin_url}">{linkedin_display}</a>')
     if contact.get("github"):
-        links.append(f'<a href="{contact["github"]}">GitHub</a>')
+        github_url = contact["github"]
+        github_display = github_url.replace("https://", "").replace("http://", "").replace("www.", "")
+        links.append(f'<a href="{github_url}">{github_display}</a>')
     if contact.get("website"):
-        links.append(f'<a href="{contact["website"]}">Portfolio</a>')
+        website_url = contact["website"]
+        website_display = website_url.replace("https://", "").replace("http://", "").replace("www.", "")
+        links.append(f'<a href="{website_url}">{website_display}</a>')
     
     links_html = ""
     if links:
@@ -335,12 +342,21 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
 
 
 def _format_experience_html(experiences: list) -> str:
-    """Format work experiences as HTML."""
+    """Format work experiences as HTML. Newest/current first."""
     if not experiences:
         return ""
     
+    # Sort: current jobs first, then by created_at descending (newest first)
+    sorted_exps = sorted(
+        experiences,
+        key=lambda x: (not x.get("is_current", False), x.get("created_at", "")),
+        reverse=False  # is_current=True comes first, then newest created_at
+    )
+    # Actually reverse to get newest first (most recently added)
+    sorted_exps = list(reversed(sorted_exps))
+    
     html_parts = []
-    for exp in experiences:
+    for exp in sorted_exps:
         bullets = "".join(f"<li>{b}</li>" for b in exp.get("bullets", []))
         html_parts.append(f'''
         <article class="entry">
@@ -360,12 +376,15 @@ def _format_experience_html(experiences: list) -> str:
 
 
 def _format_education_html(education: list) -> str:
-    """Format education as HTML."""
+    """Format education as HTML. Newest first."""
     if not education:
         return ""
     
+    # Sort by created_at descending (newest first)
+    sorted_edu = list(reversed(education))
+    
     html_parts = []
-    for edu in education:
+    for edu in sorted_edu:
         highlights = ""
         if edu.get("highlights"):
             bullets = "".join(f"<li>{h}</li>" for h in edu["highlights"])
