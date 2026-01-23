@@ -309,8 +309,12 @@ def _format_experiences(experiences: dict) -> str:
     if awards:
         lines.append("### AWARDS & HONORS:")
         for award in awards:
-            desc = f" - {award['description']}" if award.get('description') else ""
-            lines.append(f"   • {award['name']} - {award['issuer']} ({award['date']}){desc}")
+            # Handle both new format (text) and old format (name/issuer/date)
+            if award.get("text"):
+                lines.append(f"   • {award['text']}")
+            else:
+                desc = f" - {award['description']}" if award.get('description') else ""
+                lines.append(f"   • {award.get('name', '')} - {award.get('issuer', '')} ({award.get('date', '')}){desc}")
         lines.append("")
     
     return "\n".join(lines)

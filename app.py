@@ -718,7 +718,7 @@ with tab1:
             editing_award = next((a for a in awards if a["id"] == st.session_state.editing_award_id), None)
         
         if editing_award:
-            st.subheader(f"✏️ Editing: {editing_award['name']}")
+            st.subheader("✏️ Editing Award")
             if st.button("Cancel Edit", key="cancel_award_edit", type="secondary"):
                 st.session_state.editing_award_id = None
                 st.session_state.award_form_key += 1
@@ -727,53 +727,67 @@ with tab1:
             st.subheader("Add Award")
         
         with st.form(f"add_award_{st.session_state.award_form_key}"):
-            col1, col2 = st.columns(2)
-            with col1:
-                award_name = st.text_input("Award Name", value=editing_award["name"] if editing_award else "")
-                award_issuer = st.text_input("Issuing Organization", value=editing_award["issuer"] if editing_award else "")
-            with col2:
-                award_date = st.text_input("Date Received", value=editing_award.get("date", "") if editing_award else "")
+            # Get existing text - handle both old format (name/issuer/date) and new format (text)
+            default_text = ""
+            if editing_award:
+                if "text" in editing_award:
+                    default_text = editing_award["text"]
+                else:
+                    # Convert old format to text
+                    parts = [editing_award.get("name", "")]
+                    if editing_award.get("issuer"):
+                        parts.append(f"— {editing_award['issuer']}")
+                    if editing_award.get("date"):
+                        parts.append(f"({editing_award['date']})")
+                    if editing_award.get("description"):
+                        parts.append(f": {editing_award['description']}")
+                    default_text = " ".join(parts)
             
-            award_desc = st.text_area(
-                "Description (optional)",
-                value=editing_award.get("description", "") if editing_award else "",
+            award_text = st.text_area(
+                "Award",
+                value=default_text,
                 height=80,
-                help="Brief description of the award or why you received it"
+                placeholder="e.g., Dean's List, Fall 2023 — University of Example\nor: Best Paper Award — ACM Conference 2024 — For research on ML optimization",
+                help="Free text format. Include award name, issuing organization, date, and any details you want."
             )
             
             button_label = "Update Award" if editing_award else "Add Award"
             if st.form_submit_button(button_label, use_container_width=True, type="primary"):
-                if award_name and award_issuer:
+                if award_text.strip():
                     if editing_award:
-                        update_award(editing_award["id"], {
-                            "name": award_name,
-                            "issuer": award_issuer,
-                            "date": award_date,
-                            "description": award_desc
-                        })
+                        update_award(editing_award["id"], award_text.strip())
                         st.session_state.editing_award_id = None
                         st.session_state.award_form_key += 1
                         st.toast("✅ Award updated!", icon="✏️")
                     else:
-                        add_award(
-                            name=award_name,
-                            issuer=award_issuer,
-                            date=award_date,
-                            description=award_desc
-                        )
+                        add_award(award_text.strip())
                         st.session_state.award_form_key += 1
                         st.toast("✅ Award added!", icon="🏆")
                     st.rerun()
+                else:
+                    st.error("Please enter award details.")
         
+        # List awards
         for award in awards:
             is_editing = st.session_state.editing_award_id == award["id"]
-            if is_editing:
-                st.markdown(f"**{award['name']}** — {award['issuer']} ({award['date']}) 📝")
-            else:
-                st.markdown(f"**{award['name']}** — {award['issuer']} ({award['date']})")
             
-            if award.get("description"):
-                st.caption(award["description"])
+            # Handle both old and new format
+            display_text = award.get("text", "")
+            if not display_text and award.get("name"):
+                # Old format - build display text
+                display_text = award["name"]
+                if award.get("issuer"):
+                    display_text += f" — {award['issuer']}"
+                if award.get("date"):
+                    display_text += f" ({award['date']})"
+            
+            if is_editing:
+                st.markdown(f"• {display_text} 📝")
+            else:
+                st.markdown(f"• {display_text}")
+            
+            if award.get("description") and not award.get("text"):
+                st.caption(f"  {award['description']}")
             
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:

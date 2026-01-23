@@ -462,15 +462,21 @@ def _format_awards_html(awards: list) -> str:
     html_parts = ['<ul class="certs-list">']  # Reuse certs-list styling
     
     for award in awards:
-        desc = ""
-        if award.get("description"):
-            desc = f" — {award['description']}"
+        # Handle both new format (text) and old format (name/issuer/date)
+        if award.get("text"):
+            display_text = award["text"]
+        else:
+            # Old format - build display text
+            display_text = award.get("name", "")
+            if award.get("issuer"):
+                display_text += f" — {award['issuer']}"
+            if award.get("date"):
+                display_text += f" ({award['date']})"
+            if award.get("description"):
+                display_text += f": {award['description']}"
         
         html_parts.append(f'''
-        <li>
-            <span class="cert-name">{award.get("name", "")}</span> - 
-            {award.get("issuer", "")} ({award.get("date", "")}){desc}
-        </li>
+        <li>{display_text}</li>
         ''')
     
     html_parts.append('</ul>')

@@ -274,13 +274,8 @@ def delete_certification(cert_id: str):
     save_experiences(data)
 
 
-def add_award(
-    name: str,
-    issuer: str,
-    date: str,
-    description: str = ""
-) -> str:
-    """Add an award entry. Returns the ID."""
+def add_award(text: str) -> str:
+    """Add an award entry (free text). Returns the ID."""
     data = load_experiences()
     
     # Ensure awards list exists (for existing data files)
@@ -291,10 +286,7 @@ def add_award(
     
     data["awards"].append({
         "id": award_id,
-        "name": name,
-        "issuer": issuer,
-        "date": date,
-        "description": description,
+        "text": text,
         "created_at": datetime.now().isoformat()
     })
     
@@ -302,14 +294,14 @@ def add_award(
     return award_id
 
 
-def update_award(award_id: str, updates: dict):
+def update_award(award_id: str, text: str):
     """Update an award entry."""
     data = load_experiences()
     if "awards" not in data:
         data["awards"] = []
     for award in data["awards"]:
         if award["id"] == award_id:
-            award.update(updates)
+            award["text"] = text
             award["updated_at"] = datetime.now().isoformat()
             break
     save_experiences(data)
