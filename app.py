@@ -15,7 +15,7 @@ from data_manager import (
     add_work_experience, update_work_experience, delete_work_experience,
     add_education, update_education, delete_education,
     add_project, update_project, delete_project,
-    add_certification, delete_certification,
+    add_certification, update_certification, delete_certification,
     update_contact, update_summary, update_skills,
     load_templates, save_template, update_template, delete_template,
     set_default_template, get_template, get_default_template,
@@ -193,6 +193,9 @@ def init_session_state():
         st.session_state.proj_form_key = 0
     if "cert_form_key" not in st.session_state:
         st.session_state.cert_form_key = 0
+    # Editing state for certifications
+    if "editing_cert_id" not in st.session_state:
+        st.session_state.editing_cert_id = None
 
 init_session_state()
 
@@ -316,39 +319,75 @@ with tab1:
     with st.expander("💼 Work Experience", expanded=True):
         work_exps = experiences.get("work_experiences", [])
         
-        # Add new experience form
-        st.subheader("Add New Experience")
+        # Check if we're editing an existing experience
+        editing_exp = None
+        if st.session_state.editing_exp_id:
+            editing_exp = next((e for e in work_exps if e["id"] == st.session_state.editing_exp_id), None)
+        
+        # Form header changes based on mode
+        if editing_exp:
+            st.subheader(f"✏️ Editing: {editing_exp['role']} at {editing_exp['company']}")
+            if st.button("Cancel Edit", type="secondary"):
+                st.session_state.editing_exp_id = None
+                st.session_state.work_exp_form_key += 1
+                st.rerun()
+        else:
+            st.subheader("Add New Experience")
+        
+        # Form with pre-filled values when editing
         with st.form(f"add_work_exp_{st.session_state.work_exp_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
-                new_company = st.text_input("Company")
-                new_role = st.text_input("Role/Title")
-                new_location = st.text_input("Location")
+                new_company = st.text_input("Company", value=editing_exp["company"] if editing_exp else "")
+                new_role = st.text_input("Role/Title", value=editing_exp["role"] if editing_exp else "")
+                new_location = st.text_input("Location", value=editing_exp.get("location", "") if editing_exp else "")
             with col2:
-                new_start = st.text_input("Start Date (e.g., Jan 2023)")
-                new_end = st.text_input("End Date (e.g., Dec 2024)")
-                new_current = st.checkbox("Currently working here")
+                new_start = st.text_input("Start Date (e.g., Jan 2023)", value=editing_exp["start_date"] if editing_exp else "")
+                default_end = editing_exp["end_date"] if editing_exp and editing_exp["end_date"] != "Present" else ""
+                new_end = st.text_input("End Date (e.g., Dec 2024)", value=default_end)
+                default_current = editing_exp.get("is_current", False) if editing_exp else False
+                new_current = st.checkbox("Currently working here", value=default_current)
             
+            default_bullets = "\n".join(editing_exp.get("bullets", [])) if editing_exp else ""
             new_bullets = st.text_area(
                 "Bullet Points (one per line)",
+                value=default_bullets,
                 help="Each line becomes a bullet point. Use action verbs and quantify achievements.",
                 height=150
             )
             
-            if st.form_submit_button("Add Experience", use_container_width=True, type="primary"):
+            button_label = "Update Experience" if editing_exp else "Add Experience"
+            if st.form_submit_button(button_label, use_container_width=True, type="primary"):
                 if new_company and new_role:
                     bullets = [b.strip() for b in new_bullets.split("\n") if b.strip()]
-                    add_work_experience(
-                        company=new_company,
-                        role=new_role,
-                        start_date=new_start,
-                        end_date=new_end if not new_current else "Present",
-                        location=new_location,
-                        bullets=bullets,
-                        is_current=new_current
-                    )
-                    st.session_state.work_exp_form_key += 1  # Clear form
-                    st.toast(f"✅ Added experience at {new_company}!", icon="🎉")
+                    
+                    if editing_exp:
+                        # Update existing
+                        update_work_experience(editing_exp["id"], {
+                            "company": new_company,
+                            "role": new_role,
+                            "start_date": new_start,
+                            "end_date": "Present" if new_current else new_end,
+                            "location": new_location,
+                            "bullets": bullets,
+                            "is_current": new_current
+                        })
+                        st.session_state.editing_exp_id = None
+                        st.session_state.work_exp_form_key += 1
+                        st.toast(f"✅ Updated experience at {new_company}!", icon="✏️")
+                    else:
+                        # Add new
+                        add_work_experience(
+                            company=new_company,
+                            role=new_role,
+                            start_date=new_start,
+                            end_date=new_end if not new_current else "Present",
+                            location=new_location,
+                            bullets=bullets,
+                            is_current=new_current
+                        )
+                        st.session_state.work_exp_form_key += 1
+                        st.toast(f"✅ Added experience at {new_company}!", icon="🎉")
                     st.rerun()
                 else:
                     st.error("Company and Role are required.")
@@ -357,8 +396,12 @@ with tab1:
         st.subheader("Your Experiences")
         for exp in work_exps:
             with st.container():
+                # Highlight if currently being edited
+                is_editing = st.session_state.editing_exp_id == exp["id"]
+                card_style = "border: 2px solid #00d4aa;" if is_editing else ""
+                
                 st.markdown(f"""
-                <div class="card">
+                <div class="card" style="{card_style}">
                     <div class="card-header">
                         <span class="card-title">{exp['role']} at {exp['company']}</span>
                     </div>
@@ -370,10 +413,17 @@ with tab1:
                 for bullet in exp.get("bullets", []):
                     st.markdown(f"• {bullet}")
                 
-                col1, col2 = st.columns([1, 5])
+                col1, col2, col3 = st.columns([1, 1, 4])
                 with col1:
+                    if st.button("✏️ Edit", key=f"edit_exp_{exp['id']}"):
+                        st.session_state.editing_exp_id = exp["id"]
+                        st.session_state.work_exp_form_key += 1  # Reset form to load new values
+                        st.rerun()
+                with col2:
                     if st.button("🗑️ Delete", key=f"del_exp_{exp['id']}"):
                         delete_work_experience(exp['id'])
+                        if st.session_state.editing_exp_id == exp["id"]:
+                            st.session_state.editing_exp_id = None
                         st.rerun()
                 
                 st.divider()
@@ -382,43 +432,87 @@ with tab1:
     with st.expander("🎓 Education"):
         edu_list = experiences.get("education", [])
         
-        st.subheader("Add Education")
+        # Check if editing
+        editing_edu = None
+        if st.session_state.editing_edu_id:
+            editing_edu = next((e for e in edu_list if e["id"] == st.session_state.editing_edu_id), None)
+        
+        if editing_edu:
+            st.subheader(f"✏️ Editing: {editing_edu['degree']} at {editing_edu['institution']}")
+            if st.button("Cancel Edit", key="cancel_edu_edit", type="secondary"):
+                st.session_state.editing_edu_id = None
+                st.session_state.edu_form_key += 1
+                st.rerun()
+        else:
+            st.subheader("Add Education")
+        
         with st.form(f"add_education_{st.session_state.edu_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
-                edu_institution = st.text_input("Institution")
-                edu_degree = st.text_input("Degree (e.g., Bachelor's, Master's)")
-                edu_field = st.text_input("Field of Study")
+                edu_institution = st.text_input("Institution", value=editing_edu["institution"] if editing_edu else "")
+                edu_degree = st.text_input("Degree (e.g., Bachelor's, Master's)", value=editing_edu["degree"] if editing_edu else "")
+                edu_field = st.text_input("Field of Study", value=editing_edu.get("field", "") if editing_edu else "")
             with col2:
-                edu_start = st.text_input("Start Year")
-                edu_end = st.text_input("End Year (or Expected)")
-                edu_gpa = st.text_input("GPA (optional)")
+                edu_start = st.text_input("Start Year", value=editing_edu["start_date"] if editing_edu else "")
+                edu_end = st.text_input("End Year (or Expected)", value=editing_edu["end_date"] if editing_edu else "")
+                edu_gpa = st.text_input("GPA (optional)", value=editing_edu.get("gpa", "") if editing_edu else "")
             
-            edu_highlights = st.text_area("Highlights (one per line, optional)")
+            default_highlights = "\n".join(editing_edu.get("highlights", [])) if editing_edu else ""
+            edu_highlights = st.text_area("Highlights (one per line, optional)", value=default_highlights)
             
-            if st.form_submit_button("Add Education", use_container_width=True, type="primary"):
+            button_label = "Update Education" if editing_edu else "Add Education"
+            if st.form_submit_button(button_label, use_container_width=True, type="primary"):
                 if edu_institution and edu_degree:
                     highlights = [h.strip() for h in edu_highlights.split("\n") if h.strip()]
-                    add_education(
-                        institution=edu_institution,
-                        degree=edu_degree,
-                        field=edu_field,
-                        start_date=edu_start,
-                        end_date=edu_end,
-                        gpa=edu_gpa,
-                        highlights=highlights
-                    )
-                    st.session_state.edu_form_key += 1  # Clear form
-                    st.toast("✅ Education added!", icon="🎓")
+                    
+                    if editing_edu:
+                        update_education(editing_edu["id"], {
+                            "institution": edu_institution,
+                            "degree": edu_degree,
+                            "field": edu_field,
+                            "start_date": edu_start,
+                            "end_date": edu_end,
+                            "gpa": edu_gpa,
+                            "highlights": highlights
+                        })
+                        st.session_state.editing_edu_id = None
+                        st.session_state.edu_form_key += 1
+                        st.toast("✅ Education updated!", icon="✏️")
+                    else:
+                        add_education(
+                            institution=edu_institution,
+                            degree=edu_degree,
+                            field=edu_field,
+                            start_date=edu_start,
+                            end_date=edu_end,
+                            gpa=edu_gpa,
+                            highlights=highlights
+                        )
+                        st.session_state.edu_form_key += 1
+                        st.toast("✅ Education added!", icon="🎓")
                     st.rerun()
         
         # List education
         for edu in edu_list:
-            st.markdown(f"**{edu['degree']}** in {edu['field']} — {edu['institution']}")
+            is_editing = st.session_state.editing_edu_id == edu["id"]
+            if is_editing:
+                st.markdown(f"**{edu['degree']}** in {edu['field']} — {edu['institution']} 📝")
+            else:
+                st.markdown(f"**{edu['degree']}** in {edu['field']} — {edu['institution']}")
             st.caption(f"{edu['start_date']} - {edu['end_date']}" + (f" | GPA: {edu['gpa']}" if edu.get('gpa') else ""))
-            if st.button("🗑️ Delete", key=f"del_edu_{edu['id']}"):
-                delete_education(edu['id'])
-                st.rerun()
+            
+            col1, col2, col3 = st.columns([1, 1, 4])
+            with col1:
+                if st.button("✏️ Edit", key=f"edit_edu_{edu['id']}"):
+                    st.session_state.editing_edu_id = edu["id"]
+                    st.session_state.edu_form_key += 1
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Delete", key=f"del_edu_{edu['id']}"):
+                    delete_education(edu['id'])
+                    if st.session_state.editing_edu_id == edu["id"]:
+                        st.session_state.editing_edu_id = None
+                    st.rerun()
             st.divider()
     
     # Skills
@@ -463,69 +557,151 @@ with tab1:
     with st.expander("🚀 Projects"):
         projects = experiences.get("projects", [])
         
-        st.subheader("Add Project")
+        # Check if editing
+        editing_proj = None
+        if st.session_state.editing_proj_id:
+            editing_proj = next((p for p in projects if p["id"] == st.session_state.editing_proj_id), None)
+        
+        if editing_proj:
+            st.subheader(f"✏️ Editing: {editing_proj['name']}")
+            if st.button("Cancel Edit", key="cancel_proj_edit", type="secondary"):
+                st.session_state.editing_proj_id = None
+                st.session_state.proj_form_key += 1
+                st.rerun()
+        else:
+            st.subheader("Add Project")
+        
         with st.form(f"add_project_{st.session_state.proj_form_key}"):
-            proj_name = st.text_input("Project Name")
-            proj_desc = st.text_area("Description", height=80)
-            proj_tech = st.text_input("Technologies (comma-separated)")
-            proj_url = st.text_input("URL (optional)")
-            proj_bullets = st.text_area("Key Achievements (one per line)")
+            proj_name = st.text_input("Project Name", value=editing_proj["name"] if editing_proj else "")
+            proj_desc = st.text_area("Description", value=editing_proj.get("description", "") if editing_proj else "", height=80)
+            default_tech = ", ".join(editing_proj.get("technologies", [])) if editing_proj else ""
+            proj_tech = st.text_input("Technologies (comma-separated)", value=default_tech)
+            proj_url = st.text_input("URL (optional)", value=editing_proj.get("url", "") if editing_proj else "")
+            default_bullets = "\n".join(editing_proj.get("bullets", [])) if editing_proj else ""
+            proj_bullets = st.text_area("Key Achievements (one per line)", value=default_bullets)
             
-            if st.form_submit_button("Add Project", use_container_width=True, type="primary"):
+            button_label = "Update Project" if editing_proj else "Add Project"
+            if st.form_submit_button(button_label, use_container_width=True, type="primary"):
                 if proj_name:
                     bullets = [b.strip() for b in proj_bullets.split("\n") if b.strip()]
                     tech_list = [t.strip() for t in proj_tech.split(",") if t.strip()]
-                    add_project(
-                        name=proj_name,
-                        description=proj_desc,
-                        technologies=tech_list,
-                        url=proj_url,
-                        bullets=bullets
-                    )
-                    st.session_state.proj_form_key += 1  # Clear form
-                    st.toast("✅ Project added!", icon="🚀")
+                    
+                    if editing_proj:
+                        update_project(editing_proj["id"], {
+                            "name": proj_name,
+                            "description": proj_desc,
+                            "technologies": tech_list,
+                            "url": proj_url,
+                            "bullets": bullets
+                        })
+                        st.session_state.editing_proj_id = None
+                        st.session_state.proj_form_key += 1
+                        st.toast("✅ Project updated!", icon="✏️")
+                    else:
+                        add_project(
+                            name=proj_name,
+                            description=proj_desc,
+                            technologies=tech_list,
+                            url=proj_url,
+                            bullets=bullets
+                        )
+                        st.session_state.proj_form_key += 1
+                        st.toast("✅ Project added!", icon="🚀")
                     st.rerun()
         
         for proj in projects:
-            st.markdown(f"**{proj['name']}**")
+            is_editing = st.session_state.editing_proj_id == proj["id"]
+            if is_editing:
+                st.markdown(f"**{proj['name']}** 📝")
+            else:
+                st.markdown(f"**{proj['name']}**")
             st.caption(f"Technologies: {', '.join(proj.get('technologies', []))}")
             st.write(proj.get('description', ''))
-            if st.button("🗑️ Delete", key=f"del_proj_{proj['id']}"):
-                delete_project(proj['id'])
-                st.rerun()
+            
+            col1, col2, col3 = st.columns([1, 1, 4])
+            with col1:
+                if st.button("✏️ Edit", key=f"edit_proj_{proj['id']}"):
+                    st.session_state.editing_proj_id = proj["id"]
+                    st.session_state.proj_form_key += 1
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Delete", key=f"del_proj_{proj['id']}"):
+                    delete_project(proj['id'])
+                    if st.session_state.editing_proj_id == proj["id"]:
+                        st.session_state.editing_proj_id = None
+                    st.rerun()
             st.divider()
     
     # Certifications
     with st.expander("📜 Certifications"):
         certs = experiences.get("certifications", [])
         
-        st.subheader("Add Certification")
+        # Check if editing
+        editing_cert = None
+        if st.session_state.editing_cert_id:
+            editing_cert = next((c for c in certs if c["id"] == st.session_state.editing_cert_id), None)
+        
+        if editing_cert:
+            st.subheader(f"✏️ Editing: {editing_cert['name']}")
+            if st.button("Cancel Edit", key="cancel_cert_edit", type="secondary"):
+                st.session_state.editing_cert_id = None
+                st.session_state.cert_form_key += 1
+                st.rerun()
+        else:
+            st.subheader("Add Certification")
+        
         with st.form(f"add_cert_{st.session_state.cert_form_key}"):
             col1, col2 = st.columns(2)
             with col1:
-                cert_name = st.text_input("Certification Name")
-                cert_issuer = st.text_input("Issuing Organization")
+                cert_name = st.text_input("Certification Name", value=editing_cert["name"] if editing_cert else "")
+                cert_issuer = st.text_input("Issuing Organization", value=editing_cert["issuer"] if editing_cert else "")
             with col2:
-                cert_date = st.text_input("Date Obtained")
-                cert_url = st.text_input("Credential URL (optional)")
+                cert_date = st.text_input("Date Obtained", value=editing_cert.get("date", "") if editing_cert else "")
+                cert_url = st.text_input("Credential URL (optional)", value=editing_cert.get("url", "") if editing_cert else "")
             
-            if st.form_submit_button("Add Certification", use_container_width=True, type="primary"):
+            button_label = "Update Certification" if editing_cert else "Add Certification"
+            if st.form_submit_button(button_label, use_container_width=True, type="primary"):
                 if cert_name and cert_issuer:
-                    add_certification(
-                        name=cert_name,
-                        issuer=cert_issuer,
-                        date=cert_date,
-                        url=cert_url
-                    )
-                    st.session_state.cert_form_key += 1  # Clear form
-                    st.toast("✅ Certification added!", icon="📜")
+                    if editing_cert:
+                        update_certification(editing_cert["id"], {
+                            "name": cert_name,
+                            "issuer": cert_issuer,
+                            "date": cert_date,
+                            "url": cert_url
+                        })
+                        st.session_state.editing_cert_id = None
+                        st.session_state.cert_form_key += 1
+                        st.toast("✅ Certification updated!", icon="✏️")
+                    else:
+                        add_certification(
+                            name=cert_name,
+                            issuer=cert_issuer,
+                            date=cert_date,
+                            url=cert_url
+                        )
+                        st.session_state.cert_form_key += 1
+                        st.toast("✅ Certification added!", icon="📜")
                     st.rerun()
         
         for cert in certs:
-            st.markdown(f"**{cert['name']}** — {cert['issuer']} ({cert['date']})")
-            if st.button("🗑️ Delete", key=f"del_cert_{cert['id']}"):
-                delete_certification(cert['id'])
-                st.rerun()
+            is_editing = st.session_state.editing_cert_id == cert["id"]
+            if is_editing:
+                st.markdown(f"**{cert['name']}** — {cert['issuer']} ({cert['date']}) 📝")
+            else:
+                st.markdown(f"**{cert['name']}** — {cert['issuer']} ({cert['date']})")
+            
+            col1, col2, col3 = st.columns([1, 1, 4])
+            with col1:
+                if st.button("✏️ Edit", key=f"edit_cert_{cert['id']}"):
+                    st.session_state.editing_cert_id = cert["id"]
+                    st.session_state.cert_form_key += 1
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Delete", key=f"del_cert_{cert['id']}"):
+                    delete_certification(cert['id'])
+                    if st.session_state.editing_cert_id == cert["id"]:
+                        st.session_state.editing_cert_id = None
+                    st.rerun()
 
 # =============================================================================
 # TAB 2: TEMPLATE EDITOR

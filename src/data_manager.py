@@ -253,6 +253,17 @@ def add_certification(
     return cert_id
 
 
+def update_certification(cert_id: str, updates: dict):
+    """Update a certification entry."""
+    data = load_experiences()
+    for cert in data["certifications"]:
+        if cert["id"] == cert_id:
+            cert.update(updates)
+            cert["updated_at"] = datetime.now().isoformat()
+            break
+    save_experiences(data)
+
+
 def delete_certification(cert_id: str):
     """Delete a certification entry."""
     data = load_experiences()
