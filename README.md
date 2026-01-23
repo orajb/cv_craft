@@ -11,11 +11,14 @@
 ## ✨ Features
 
 - **📝 Experience Bank** — Store all your work experiences, education, skills, and projects in one place
+  - Full CRUD: Add, Edit, Delete for all entry types
+  - Toast notifications for instant feedback
 - **🎨 Template Editor** — Create and customize CV templates with AI assistance
 - **✨ CV Generator** — Paste a job description and let AI create a tailored CV
 - **📚 Application History** — Track all your applications with their generated CVs
 - **🤖 Gemini AI Integration** — Uses `gemini-3-pro-preview` with fallback to `gemini-2.5-pro`
 - **🔒 Local-First** — All data stored locally, API key never saved to disk
+- **🚀 One-Command Setup** — `./run.sh` handles venv, dependencies, and launch
 
 ---
 
@@ -77,6 +80,12 @@ Store all your professional information:
 - **Skills** — Technical, soft skills, tools, languages
 - **Projects** — Personal/professional projects with tech stack
 - **Certifications** — Professional certifications
+
+**Editing entries:**
+- Click ✏️ **Edit** on any item to load it into the form
+- Make your changes and click **Update**
+- Click **Cancel Edit** to discard changes
+- Toast notifications confirm all save/update actions
 
 > 💡 **Tip**: Add ALL your experiences here. The AI will select the most relevant ones for each job application.
 
@@ -153,6 +162,8 @@ data/
 ```
 Job Hunter/
 ├── app.py                    # Main Streamlit application
+├── run.sh                    # One-command launcher (macOS/Linux)
+├── run.bat                   # One-command launcher (Windows)
 ├── requirements.txt          # Python dependencies
 ├── README.md                 # This file
 ├── .gitignore               # Git ignore rules
