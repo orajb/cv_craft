@@ -1374,20 +1374,44 @@ with tab4:
                             st.rerun()
                 
                 with col2:
-                    st.markdown("**Generated CV Preview:**")
+                    st.markdown("**Generated CV:**")
                     if app.get("generated_html"):
-                        st.components.v1.html(
-                            app["generated_html"],
-                            height=300,
-                            scrolling=True
-                        )
+                        # Edit toggle
+                        edit_mode = st.toggle("Edit HTML", value=False, key=f"edit_html_{app['id']}")
                         
-                        if st.button("🌐 Open in Browser", key=f"open_{app['id']}"):
-                            filepath = open_cv_in_browser(
-                                app["generated_html"],
-                                f"cv_{app['company']}_{app['id']}.html"
+                        if edit_mode:
+                            edited_html = st.text_area(
+                                "Edit CV HTML",
+                                value=app["generated_html"],
+                                height=300,
+                                key=f"html_editor_{app['id']}"
                             )
-                            st.info("Opened in browser!")
+                            col_save, col_cancel = st.columns(2)
+                            with col_save:
+                                if st.button("💾 Save HTML", key=f"save_html_{app['id']}", type="primary"):
+                                    update_application(app["id"], {"generated_html": edited_html})
+                                    st.toast("✅ HTML saved!")
+                                    st.rerun()
+                            with col_cancel:
+                                if st.button("🌐 Open in Browser", key=f"open_edit_{app['id']}"):
+                                    filepath = open_cv_in_browser(
+                                        edited_html,
+                                        f"cv_{app['company']}_{app['id']}.html"
+                                    )
+                                    st.info("Opened in browser!")
+                        else:
+                            st.components.v1.html(
+                                app["generated_html"],
+                                height=300,
+                                scrolling=True
+                            )
+                            
+                            if st.button("🌐 Open in Browser", key=f"open_{app['id']}"):
+                                filepath = open_cv_in_browser(
+                                    app["generated_html"],
+                                    f"cv_{app['company']}_{app['id']}.html"
+                                )
+                                st.info("Opened in browser!")
                 
                 # Notes
                 notes = st.text_area(
