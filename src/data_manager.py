@@ -452,7 +452,8 @@ def save_application(
     job_description: str,
     generated_html: str,
     template_id: str,
-    notes: str = ""
+    notes: str = "",
+    status: str = "created"
 ) -> str:
     """Save an application entry. Returns the ID."""
     data = _load_json(APPLICATIONS_FILE)
@@ -469,13 +470,50 @@ def save_application(
         "generated_html": generated_html,
         "template_id": template_id,
         "notes": notes,
-        "status": "created",
+        "status": status,
         "created_at": datetime.now().isoformat()
     }
     
     data["applications"].insert(0, application)  # Most recent first
     _save_json(APPLICATIONS_FILE, data)
     return app_id
+
+
+def save_or_update_draft(
+    company: str,
+    role: str,
+    job_description: str,
+    generated_html: str,
+    template_id: str,
+    existing_draft_id: str = None
+) -> str:
+    """Save a new draft or update existing draft. Returns the draft ID."""
+    data = _load_json(APPLICATIONS_FILE)
+    if not data:
+        data = {"applications": []}
+    
+    # If we have an existing draft ID, update it
+    if existing_draft_id:
+        for app in data.get("applications", []):
+            if app["id"] == existing_draft_id and app.get("status") == "draft":
+                app["company"] = company
+                app["role"] = role
+                app["job_description"] = job_description
+                app["generated_html"] = generated_html
+                app["template_id"] = template_id
+                app["updated_at"] = datetime.now().isoformat()
+                _save_json(APPLICATIONS_FILE, data)
+                return existing_draft_id
+    
+    # Create new draft
+    return save_application(
+        company=company,
+        role=role,
+        job_description=job_description,
+        generated_html=generated_html,
+        template_id=template_id,
+        status="draft"
+    )
 
 
 def update_application(app_id: str, updates: dict):

@@ -21,7 +21,7 @@ from data_manager import (
     load_templates, save_template, update_template, delete_template,
     set_default_template, get_template, get_default_template,
     load_applications, save_application, update_application, delete_application,
-    get_application
+    get_application, save_or_update_draft
 )
 from gemini_client import (
     GeminiClient, create_cv_prompt, create_template_prompt,
@@ -181,6 +181,8 @@ def init_session_state():
         st.session_state.gemini_client = None
     if "current_cv_html" not in st.session_state:
         st.session_state.current_cv_html = ""
+    if "current_draft_id" not in st.session_state:
+        st.session_state.current_draft_id = None
     if "editing_exp_id" not in st.session_state:
         st.session_state.editing_exp_id = None
     if "editing_edu_id" not in st.session_state:
@@ -1142,7 +1144,18 @@ with tab3:
                         if limit_one_page:
                             st.session_state.cv_compact_mode = "compact"
                         
-                        st.success("CV generated successfully!")
+                        # Auto-save as draft to protect against page refresh
+                        draft_id = save_or_update_draft(
+                            company=job_company,
+                            role=job_role,
+                            job_description=job_description,
+                            generated_html=generated_html,
+                            template_id=selected_template_id,
+                            existing_draft_id=st.session_state.get("current_draft_id")
+                        )
+                        st.session_state.current_draft_id = draft_id
+                        
+                        st.success("CV generated! (Auto-saved as draft)")
                         st.rerun()
                         
                     except Exception as e:
@@ -1154,6 +1167,10 @@ with tab3:
         st.subheader("Generated CV")
         
         if st.session_state.current_cv_html:
+            # Show draft status indicator
+            if st.session_state.get("current_draft_id"):
+                st.caption("💾 *Draft auto-saved* — use 'Save Application' to finalize")
+            
             # Display options row
             col_edit, col_compact = st.columns([1, 1])
             with col_edit:
@@ -1225,11 +1242,6 @@ with tab3:
             
             with col_b:
                 if st.button("💾 Save Application", use_container_width=True, key="cv_save_app"):
-                    company = st.session_state.get("cv_job_company", "Unknown")
-                    role = st.session_state.get("cv_job_role", "Unknown")
-                    jd = st.session_state.get("cv_job_description", "")
-                    template_id = st.session_state.get("cv_template_id", "")
-                    
                     # Save with compact mode applied
                     final_html = st.session_state.current_cv_html
                     if st.session_state.cv_compact_mode != "normal":
@@ -1239,19 +1251,32 @@ with tab3:
                         elif '</body>' in final_html:
                             final_html = final_html.replace('</body>', compact_css + '</body>')
                     
-                    app_id = save_application(
-                        company=company,
-                        role=role,
-                        job_description=jd,
-                        generated_html=final_html,
-                        template_id=template_id
-                    )
-                    st.success(f"Application saved! ID: {app_id}")
+                    # Promote draft to saved application (or update existing draft)
+                    draft_id = st.session_state.get("current_draft_id")
+                    if draft_id:
+                        # Update draft with final HTML and change status to "created"
+                        update_application(draft_id, {
+                            "generated_html": final_html,
+                            "status": "created"
+                        })
+                        app_id = draft_id
+                        st.session_state.current_draft_id = None  # Clear draft reference
+                    else:
+                        # No draft exists, create new application
+                        app_id = save_application(
+                            company=st.session_state.get("cv_job_company", "Unknown"),
+                            role=st.session_state.get("cv_job_role", "Unknown"),
+                            job_description=st.session_state.get("cv_job_description", ""),
+                            generated_html=final_html,
+                            template_id=st.session_state.get("cv_template_id", "")
+                        )
+                    st.success(f"Application saved!")
             
             with col_c:
                 if st.button("🔄 Regenerate", use_container_width=True, key="cv_regenerate"):
                     st.session_state.current_cv_html = ""
                     st.session_state.cv_compact_mode = "normal"
+                    # Keep draft ID so regeneration updates the same draft
                     st.rerun()
         else:
             st.info("Fill in the job details and click 'Generate CV' to create your tailored CV.")
@@ -1302,13 +1327,20 @@ with tab4:
         st.caption(f"Showing {len(filtered)} of {len(applications)} applications")
         
         for app in filtered:
+            # Show draft badge in title
+            is_draft = app.get("status") == "draft"
+            draft_badge = "📝 " if is_draft else ""
+            
             with st.expander(
-                f"**{app.get('company', 'Unknown')}** — {app.get('role', 'Unknown Role')} "
+                f"{draft_badge}**{app.get('company', 'Unknown')}** — {app.get('role', 'Unknown Role')} "
                 f"({app.get('created_at', '')[:10]})"
             ):
                 col1, col2 = st.columns([1, 1])
                 
                 with col1:
+                    if is_draft:
+                        st.info("📝 This is a draft — not yet finalized")
+                    
                     st.markdown("**Job Description:**")
                     st.text_area(
                         "JD",
@@ -1320,7 +1352,7 @@ with tab4:
                     )
                     
                     # Status update
-                    status_options = ["created", "applied", "interviewing", "rejected", "offer"]
+                    status_options = ["draft", "created", "applied", "interviewing", "rejected", "offer"]
                     current_status = app.get("status", "created")
                     new_status = st.selectbox(
                         "Status",
