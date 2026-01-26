@@ -24,8 +24,8 @@ from data_manager import (
     get_application, save_or_update_draft
 )
 from gemini_client import (
-    GeminiClient, create_cv_prompt, create_template_prompt,
-    SYSTEM_INSTRUCTION_CV, SYSTEM_INSTRUCTION_TEMPLATE
+    GeminiClient, AIClient, create_cv_prompt, create_template_prompt,
+    SYSTEM_INSTRUCTION_CV, SYSTEM_INSTRUCTION_TEMPLATE, detect_api_provider
 )
 from cv_generator import (
     get_default_template_html, get_default_template_css,
@@ -227,12 +227,12 @@ with st.sidebar:
     st.divider()
     
     # API Key input
-    st.subheader("🔑 Gemini API Key")
+    st.subheader("🔑 AI API Key")
     api_key = st.text_input(
-        "Enter your API key",
+        "Enter your Gemini or Claude API key",
         type="password",
         value=st.session_state.api_key,
-        help="Your API key is stored in session only, never saved to disk."
+        help="Supports both Google Gemini and Anthropic Claude. Key is stored in session only."
     )
     
     if api_key != st.session_state.api_key:
@@ -240,9 +240,15 @@ with st.sidebar:
         st.session_state.gemini_client = None
     
     if api_key:
+        # Show detected provider
+        provider = detect_api_provider(api_key)
+        provider_icon = "🤖" if provider == "gemini" else "🟣" if provider == "claude" else "❓"
+        provider_name = provider.title() if provider != "unknown" else "Unknown"
+        st.caption(f"{provider_icon} Detected provider: **{provider_name}**")
+        
         if st.button("Test Connection", use_container_width=True, key="test_api_connection"):
             with st.spinner("Testing..."):
-                client = GeminiClient(api_key)
+                client = AIClient(api_key)
                 success, message = client.test_connection()
                 if success:
                     st.success(message)
@@ -929,7 +935,7 @@ with tab2:
             if style_description and template_name:
                 with st.spinner("Generating template..."):
                     try:
-                        client = GeminiClient(st.session_state.api_key)
+                        client = AIClient(st.session_state.api_key)
                         prompt = create_template_prompt(style_description)
                         response = client.generate_flash(prompt, SYSTEM_INSTRUCTION_TEMPLATE)
                         html_content = extract_html_from_response(response)
@@ -1119,7 +1125,7 @@ with tab3:
             if job_description and selected_template_id:
                 with st.spinner("AI is crafting your CV..."):
                     try:
-                        client = GeminiClient(st.session_state.api_key)
+                        client = AIClient(st.session_state.api_key)
                         experiences = load_experiences()
                         template = get_template(selected_template_id)
                         

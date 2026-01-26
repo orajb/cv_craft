@@ -41,14 +41,14 @@ def get_default_template_html() -> str:
                 max-width: none;
             }
             
-            /* Keep individual entries together (don't split mid-bullets) */
-            .entry, article {
+            /* Keep bullet lists together (don't split mid-bullets) */
+            .entry ul, article ul {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Prevent orphaned section headers */
-            h2 {
+            /* Prevent orphaned headers */
+            h2, .entry-header {
                 page-break-after: avoid;
                 break-after: avoid;
             }
@@ -264,14 +264,14 @@ def get_modern_clean_template_html() -> str:
                 max-width: none;
             }
             
-            /* Keep individual entries together (don't split mid-bullets) */
-            .entry, article {
+            /* Keep bullet lists together (don't split mid-bullets) */
+            .entry ul, article ul {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Prevent orphaned section headers */
-            h2 {
+            /* Prevent orphaned headers */
+            h2, .entry-header {
                 page-break-after: avoid;
                 break-after: avoid;
             }
@@ -507,25 +507,14 @@ def get_career_progression_template_html() -> str:
                 max-width: none;
             }
             
-            /* Keep individual entries together (don't split mid-bullets) */
-            .entry, article, .role-entry {
+            /* Keep bullet lists together (don't split mid-bullets) */
+            .entry ul, article ul, .role-entry ul {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Keep company groups together if possible, but allow break if too long */
-            .company-group {
-                page-break-inside: auto;
-            }
-            
-            /* Prevent orphaned section headers */
-            h2 {
-                page-break-after: avoid;
-                break-after: avoid;
-            }
-            
-            /* Prevent orphaned company headers */
-            .company-header {
+            /* Prevent orphaned headers */
+            h2, .entry-header, .company-header, .role-header {
                 page-break-after: avoid;
                 break-after: avoid;
             }
@@ -802,14 +791,14 @@ body {
         max-width: none;
     }
     
-    /* Keep individual entries together (don't split mid-bullets) */
-    .entry, article {
+    /* Keep bullet lists together (don't split mid-bullets) */
+    .entry ul, article ul {
         page-break-inside: avoid;
         break-inside: avoid;
     }
     
-    /* Prevent orphaned section headers */
-    h2 {
+    /* Prevent orphaned headers */
+    h2, .entry-header {
         page-break-after: avoid;
         break-after: avoid;
     }
@@ -1043,14 +1032,14 @@ def fill_template_with_experiences(
 <style>
 /* Universal print styles - injected for all templates */
 @media print {
-    /* Keep individual entries together (don't split mid-bullets) */
-    .entry, article, .role-entry {
+    /* Keep bullet lists together (don't split mid-bullets) */
+    .entry ul, article ul, .role-entry ul {
         page-break-inside: avoid;
         break-inside: avoid;
     }
     
-    /* Prevent orphaned headers */
-    h2, h3, .company-header {
+    /* Prevent orphaned headers - keep header with first content */
+    h2, h3, .company-header, .entry-header {
         page-break-after: avoid;
         break-after: avoid;
     }

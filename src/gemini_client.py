@@ -1,11 +1,16 @@
 """
-Gemini API Client with model fallback support
-Primary: gemini-3-pro-preview
-Fallback: gemini-2.5-pro
-Fast/Cheap: gemini-2.0-flash
+AI Client with support for both Google Gemini and Anthropic Claude APIs.
+Automatically detects which API key is provided and uses the appropriate backend.
+
+Gemini Models:
+- Pro (expensive): gemini-3-pro-preview → fallback: gemini-2.5-pro
+- Flash (cheap): gemini-2.0-flash
+
+Claude Models:
+- Pro (expensive): claude-sonnet-4-20250514
+- Flash (cheap): claude-3-5-haiku-20241022
 """
 
-import google.generativeai as genai
 from typing import Optional
 import logging
 
@@ -14,7 +19,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Model configurations
-MODELS = {
+GEMINI_MODELS = {
     "pro": {
         "primary": "gemini-3-pro-preview",
         "fallback": "gemini-2.5-pro"
@@ -22,93 +27,174 @@ MODELS = {
     "flash": "gemini-2.0-flash"
 }
 
+CLAUDE_MODELS = {
+    "pro": "claude-sonnet-4-20250514",
+    "flash": "claude-3-5-haiku-20241022"
+}
 
-class GeminiClient:
-    """Gemini API client with automatic fallback."""
+
+def detect_api_provider(api_key: str) -> str:
+    """Detect whether the API key is for Gemini or Claude."""
+    if not api_key:
+        return "unknown"
+    
+    # Claude API keys typically start with "sk-ant-"
+    if api_key.startswith("sk-ant-"):
+        return "claude"
+    
+    # Gemini API keys typically start with "AI" and are ~39 characters
+    if api_key.startswith("AI") and len(api_key) > 30:
+        return "gemini"
+    
+    # Default to gemini for other patterns (older key formats)
+    # Could also try to make a test call, but that uses tokens
+    return "gemini"
+
+
+class AIClient:
+    """Unified AI client supporting both Gemini and Claude APIs."""
     
     def __init__(self, api_key: str):
-        """Initialize the client with API key."""
+        """Initialize the client with API key. Automatically detects provider."""
         self.api_key = api_key
-        genai.configure(api_key=api_key)
-        self._pro_model = None
-        self._flash_model = None
+        self.provider = detect_api_provider(api_key)
+        self._initialized = False
+        self._client = None
+        
+        logger.info(f"AI Client initialized with provider: {self.provider}")
     
-    def _get_pro_model(self):
-        """Get or create pro model with fallback."""
-        if self._pro_model is None:
-            # Try primary model first
-            try:
-                self._pro_model = genai.GenerativeModel(MODELS["pro"]["primary"])
-                # Test the model with a simple request
-                logger.info(f"Using primary model: {MODELS['pro']['primary']}")
-            except Exception as e:
-                logger.warning(f"Primary model unavailable: {e}. Falling back...")
-                self._pro_model = genai.GenerativeModel(MODELS["pro"]["fallback"])
-                logger.info(f"Using fallback model: {MODELS['pro']['fallback']}")
-        return self._pro_model
+    def _init_gemini(self):
+        """Initialize Gemini client."""
+        import google.generativeai as genai
+        genai.configure(api_key=self.api_key)
+        self._genai = genai
+        self._initialized = True
     
-    def _get_flash_model(self):
-        """Get or create flash model."""
-        if self._flash_model is None:
-            self._flash_model = genai.GenerativeModel(MODELS["flash"])
-        return self._flash_model
+    def _init_claude(self):
+        """Initialize Claude client."""
+        import anthropic
+        self._client = anthropic.Anthropic(api_key=self.api_key)
+        self._initialized = True
+    
+    def _ensure_initialized(self):
+        """Ensure the appropriate client is initialized."""
+        if self._initialized:
+            return
+        
+        if self.provider == "claude":
+            self._init_claude()
+        else:
+            self._init_gemini()
     
     def generate_pro(self, prompt: str, system_instruction: str = None) -> str:
         """
-        Generate content using the pro model (with fallback).
+        Generate content using the expensive/pro model.
         Use for: CV generation, content assessment, final polish.
         """
-        model = self._get_pro_model()
+        self._ensure_initialized()
         
-        try:
-            if system_instruction:
-                model = genai.GenerativeModel(
-                    model_name=model.model_name,
-                    system_instruction=system_instruction
-                )
-            
-            response = model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            # If primary fails during generation, try fallback
-            if MODELS["pro"]["primary"] in str(model.model_name):
-                logger.warning(f"Primary model failed: {e}. Trying fallback...")
-                self._pro_model = genai.GenerativeModel(MODELS["pro"]["fallback"])
-                if system_instruction:
-                    fallback = genai.GenerativeModel(
-                        model_name=MODELS["pro"]["fallback"],
-                        system_instruction=system_instruction
-                    )
-                else:
-                    fallback = self._pro_model
-                response = fallback.generate_content(prompt)
-                return response.text
-            raise
+        if self.provider == "claude":
+            return self._claude_generate(prompt, system_instruction, model=CLAUDE_MODELS["pro"])
+        else:
+            return self._gemini_generate_pro(prompt, system_instruction)
     
     def generate_flash(self, prompt: str, system_instruction: str = None) -> str:
         """
-        Generate content using the flash model.
+        Generate content using the cheap/fast model.
         Use for: Quick drafts, template generation, previews.
         """
-        model = self._flash_model
+        self._ensure_initialized()
         
-        if model is None or system_instruction:
-            model = genai.GenerativeModel(
-                model_name=MODELS["flash"],
+        if self.provider == "claude":
+            return self._claude_generate(prompt, system_instruction, model=CLAUDE_MODELS["flash"])
+        else:
+            return self._gemini_generate_flash(prompt, system_instruction)
+    
+    def _claude_generate(self, prompt: str, system_instruction: str, model: str) -> str:
+        """Generate using Claude API."""
+        messages = [{"role": "user", "content": prompt}]
+        
+        kwargs = {
+            "model": model,
+            "max_tokens": 8192,
+            "messages": messages
+        }
+        
+        if system_instruction:
+            kwargs["system"] = system_instruction
+        
+        response = self._client.messages.create(**kwargs)
+        return response.content[0].text
+    
+    def _gemini_generate_pro(self, prompt: str, system_instruction: str = None) -> str:
+        """Generate using Gemini pro model with fallback."""
+        # Try primary model first
+        try:
+            model_name = GEMINI_MODELS["pro"]["primary"]
+            if system_instruction:
+                model = self._genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_instruction
+                )
+            else:
+                model = self._genai.GenerativeModel(model_name)
+            
+            response = model.generate_content(prompt)
+            logger.info(f"Generated with {model_name}")
+            return response.text
+        except Exception as e:
+            logger.warning(f"Primary model failed: {e}. Trying fallback...")
+            
+            # Try fallback model
+            model_name = GEMINI_MODELS["pro"]["fallback"]
+            if system_instruction:
+                model = self._genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_instruction
+                )
+            else:
+                model = self._genai.GenerativeModel(model_name)
+            
+            response = model.generate_content(prompt)
+            logger.info(f"Generated with fallback {model_name}")
+            return response.text
+    
+    def _gemini_generate_flash(self, prompt: str, system_instruction: str = None) -> str:
+        """Generate using Gemini flash model."""
+        model_name = GEMINI_MODELS["flash"]
+        if system_instruction:
+            model = self._genai.GenerativeModel(
+                model_name=model_name,
                 system_instruction=system_instruction
-            ) if system_instruction else self._get_flash_model()
+            )
+        else:
+            model = self._genai.GenerativeModel(model_name)
         
         response = model.generate_content(prompt)
         return response.text
     
     def test_connection(self) -> tuple[bool, str]:
         """Test API connection and return (success, message)."""
+        self._ensure_initialized()
+        
         try:
-            model = genai.GenerativeModel(MODELS["flash"])
-            response = model.generate_content("Say 'API Connected' in exactly 2 words.")
-            return True, f"Connected successfully. Response: {response.text.strip()}"
+            if self.provider == "claude":
+                response = self._client.messages.create(
+                    model=CLAUDE_MODELS["flash"],
+                    max_tokens=50,
+                    messages=[{"role": "user", "content": "Say 'API Connected' in exactly 2 words."}]
+                )
+                return True, f"Claude connected! Response: {response.content[0].text.strip()}"
+            else:
+                model = self._genai.GenerativeModel(GEMINI_MODELS["flash"])
+                response = model.generate_content("Say 'API Connected' in exactly 2 words.")
+                return True, f"Gemini connected! Response: {response.text.strip()}"
         except Exception as e:
             return False, f"Connection failed: {str(e)}"
+
+
+# Backwards compatibility alias
+GeminiClient = AIClient
 
 
 # =============================================================================
