@@ -37,32 +37,14 @@ def get_default_template_html() -> str:
         
         @media print {
             body {
-                padding: 0;
+                padding: 0.4in;
                 max-width: none;
             }
             
-            /* Prevent page breaks inside entries */
-            .entry, article, .company-group, .role-entry {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Avoid orphaned section headers */
+            /* Only prevent orphaned section headers */
             h2 {
                 page-break-after: avoid;
                 break-after: avoid;
-            }
-            
-            /* Allow breaks between sections */
-            section {
-                page-break-before: auto;
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Keep header on first page */
-            header {
-                page-break-after: avoid;
             }
         }
         
@@ -276,28 +258,10 @@ def get_modern_clean_template_html() -> str:
                 max-width: none;
             }
             
-            /* Prevent page breaks inside entries */
-            .entry, article, .company-group, .role-entry {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Avoid orphaned section headers */
+            /* Only prevent orphaned section headers */
             h2 {
                 page-break-after: avoid;
                 break-after: avoid;
-            }
-            
-            /* Allow breaks between sections */
-            section {
-                page-break-before: auto;
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Keep header on first page */
-            header {
-                page-break-after: avoid;
             }
         }
         
@@ -531,28 +495,10 @@ def get_career_progression_template_html() -> str:
                 max-width: none;
             }
             
-            /* Prevent page breaks inside entries */
-            .entry, article, .company-group, .role-entry {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Avoid orphaned section headers */
+            /* Only prevent orphaned section headers */
             h2 {
                 page-break-after: avoid;
                 break-after: avoid;
-            }
-            
-            /* Allow breaks between sections */
-            section {
-                page-break-before: auto;
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-            
-            /* Keep header on first page */
-            header {
-                page-break-after: avoid;
             }
         }
         
@@ -823,32 +769,14 @@ body {
 
 @media print {
     body {
-        padding: 0;
+        padding: 0.4in;
         max-width: none;
     }
     
-    /* Prevent page breaks inside entries */
-    .entry, article, .company-group, .role-entry {
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-    
-    /* Avoid orphaned section headers */
+    /* Only prevent orphaned section headers */
     h2 {
         page-break-after: avoid;
         break-after: avoid;
-    }
-    
-    /* Allow breaks between sections */
-    section {
-        page-break-before: auto;
-        page-break-inside: avoid;
-        break-inside: avoid;
-    }
-    
-    /* Keep header on first page */
-    header {
-        page-break-after: avoid;
     }
 }
 
@@ -977,6 +905,25 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     
     # Remove empty sections
     html = _remove_empty_sections(html)
+    
+    # Inject universal print CSS for ALL templates (including user-generated)
+    # This ensures consistent page break behavior across all templates
+    universal_print_css = '''
+<style>
+/* Universal print styles - injected for all templates */
+@media print {
+    h2, h3 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+}
+</style>
+'''
+    # Insert before </head> if exists, otherwise before </body>
+    if '</head>' in html:
+        html = html.replace('</head>', universal_print_css + '</head>')
+    elif '</body>' in html:
+        html = html.replace('</body>', universal_print_css + '</body>')
     
     return html
 
