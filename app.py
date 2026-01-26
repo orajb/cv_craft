@@ -238,7 +238,7 @@ with st.sidebar:
         st.session_state.gemini_client = None
     
     if api_key:
-        if st.button("Test Connection", use_container_width=True):
+        if st.button("Test Connection", use_container_width=True, key="test_api_connection"):
             with st.spinner("Testing..."):
                 client = GeminiClient(api_key)
                 success, message = client.test_connection()
@@ -352,7 +352,7 @@ with tab1:
         # Form header changes based on mode
         if editing_exp:
             st.subheader(f"✏️ Editing: {editing_exp['role']} at {editing_exp['company']}")
-            if st.button("Cancel Edit", type="secondary"):
+            if st.button("Cancel Edit", type="secondary", key="cancel_exp_edit"):
                 st.session_state.editing_exp_id = None
                 st.session_state.work_exp_form_key += 1
                 st.rerun()
@@ -923,7 +923,7 @@ with tab2:
         
         template_name = st.text_input("Template Name", placeholder="Modern Blue")
         
-        if st.button("Generate with AI", use_container_width=True, disabled=not st.session_state.api_key):
+        if st.button("Generate with AI", use_container_width=True, disabled=not st.session_state.api_key, key="template_generate_ai"):
             if style_description and template_name:
                 with st.spinner("Generating template..."):
                     try:
@@ -973,14 +973,14 @@ with tab2:
                     )
                     col_save, col_cancel = st.columns(2)
                     with col_save:
-                        if st.button("Save Name", use_container_width=True, type="primary"):
+                        if st.button("Save Name", use_container_width=True, type="primary", key="template_save_name"):
                             if new_name.strip():
                                 update_template(selected_template["id"], {"name": new_name.strip()})
                                 st.session_state.editing_template_name = None
                                 st.toast("✅ Template renamed!", icon="✏️")
                                 st.rerun()
                     with col_cancel:
-                        if st.button("Cancel", use_container_width=True):
+                        if st.button("Cancel", use_container_width=True, key="template_cancel_rename"):
                             st.session_state.editing_template_name = None
                             st.rerun()
                 else:
@@ -989,7 +989,7 @@ with tab2:
             
             with col_actions:
                 if not st.session_state.get("editing_template_name"):
-                    if st.button("✏️ Rename", use_container_width=True):
+                    if st.button("✏️ Rename", use_container_width=True, key="template_rename"):
                         st.session_state.editing_template_name = selected_template["id"]
                         st.rerun()
             
@@ -997,14 +997,14 @@ with tab2:
             col_default, col_delete = st.columns(2)
             with col_default:
                 if not is_default:
-                    if st.button("⭐ Set as Default", use_container_width=True):
+                    if st.button("⭐ Set as Default", use_container_width=True, key="template_set_default"):
                         set_default_template(selected_template["id"])
                         st.toast("✅ Set as default template!", icon="⭐")
                         st.rerun()
                 else:
                     st.caption("✓ Default template")
             with col_delete:
-                if st.button("🗑️ Delete Template", use_container_width=True):
+                if st.button("🗑️ Delete Template", use_container_width=True, key="template_delete"):
                     st.session_state.confirm_delete_template = selected_template["id"]
                     st.rerun()
             
@@ -1013,7 +1013,7 @@ with tab2:
                 st.warning(f"Are you sure you want to delete '{selected_template['name']}'?")
                 col_yes, col_no = st.columns(2)
                 with col_yes:
-                    if st.button("Yes, Delete", use_container_width=True, type="primary"):
+                    if st.button("Yes, Delete", use_container_width=True, type="primary", key="template_confirm_delete"):
                         delete_template(selected_template["id"])
                         st.session_state.selected_template_id = None
                         st.session_state.confirm_delete_template = None
@@ -1036,7 +1036,7 @@ with tab2:
                     height=400
                 )
                 
-                if st.button("💾 Save HTML Changes", use_container_width=True, type="primary"):
+                if st.button("💾 Save HTML Changes", use_container_width=True, type="primary", key="template_save_html"):
                     update_template(selected_template["id"], {"html": edited_html})
                     st.toast("✅ Template HTML saved!", icon="💾")
                     st.rerun()
@@ -1050,7 +1050,7 @@ with tab2:
                 
                 st.components.v1.html(preview_html, height=600, scrolling=True)
                 
-                if st.button("🌐 Open in Browser", use_container_width=True):
+                if st.button("🌐 Open in Browser", use_container_width=True, key="template_open_browser"):
                     filepath = open_cv_in_browser(preview_html, f"template_preview_{selected_id}.html")
                     st.info(f"Opened in browser. File saved at: {filepath}")
         else:
@@ -1113,7 +1113,7 @@ with tab3:
         # Generate button
         st.divider()
         
-        if st.button("🚀 Generate CV", use_container_width=True, type="primary", disabled=not st.session_state.api_key):
+        if st.button("🚀 Generate CV", use_container_width=True, type="primary", disabled=not st.session_state.api_key, key="generate_cv_btn"):
             if job_description and selected_template_id:
                 with st.spinner("AI is crafting your CV..."):
                     try:
@@ -1175,7 +1175,7 @@ with tab3:
                     value=st.session_state.current_cv_html,
                     height=400
                 )
-                if st.button("Apply Changes"):
+                if st.button("Apply Changes", key="apply_cv_changes"):
                     st.session_state.current_cv_html = edited_cv
                     st.success("Changes applied!")
                     st.rerun()
@@ -1211,7 +1211,7 @@ with tab3:
             col_a, col_b, col_c = st.columns(3)
             
             with col_a:
-                if st.button("🌐 Open in Browser", use_container_width=True):
+                if st.button("🌐 Open in Browser", use_container_width=True, key="cv_open_browser"):
                     # Apply compact mode when opening in browser too
                     final_html = st.session_state.current_cv_html
                     if st.session_state.cv_compact_mode != "normal":
@@ -1224,7 +1224,7 @@ with tab3:
                     st.info(f"Opened! Use browser's Print → Save as PDF")
             
             with col_b:
-                if st.button("💾 Save Application", use_container_width=True):
+                if st.button("💾 Save Application", use_container_width=True, key="cv_save_app"):
                     company = st.session_state.get("cv_job_company", "Unknown")
                     role = st.session_state.get("cv_job_role", "Unknown")
                     jd = st.session_state.get("cv_job_description", "")
@@ -1249,7 +1249,7 @@ with tab3:
                     st.success(f"Application saved! ID: {app_id}")
             
             with col_c:
-                if st.button("🔄 Regenerate", use_container_width=True):
+                if st.button("🔄 Regenerate", use_container_width=True, key="cv_regenerate"):
                     st.session_state.current_cv_html = ""
                     st.session_state.cv_compact_mode = "normal"
                     st.rerun()
