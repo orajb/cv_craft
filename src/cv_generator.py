@@ -40,6 +40,30 @@ def get_default_template_html() -> str:
                 padding: 0;
                 max-width: none;
             }
+            
+            /* Prevent page breaks inside entries */
+            .entry, article, .company-group, .role-entry {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Avoid orphaned section headers */
+            h2 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
+            }
         }
         
         header {
@@ -250,6 +274,30 @@ def get_modern_clean_template_html() -> str:
             body {
                 padding: 0.4in;
                 max-width: none;
+            }
+            
+            /* Prevent page breaks inside entries */
+            .entry, article, .company-group, .role-entry {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Avoid orphaned section headers */
+            h2 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
             }
         }
         
@@ -481,6 +529,30 @@ def get_career_progression_template_html() -> str:
             body {
                 padding: 0.4in;
                 max-width: none;
+            }
+            
+            /* Prevent page breaks inside entries */
+            .entry, article, .company-group, .role-entry {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Avoid orphaned section headers */
+            h2 {
+                page-break-after: avoid;
+                break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
             }
         }
         
@@ -753,6 +825,30 @@ body {
     body {
         padding: 0;
         max-width: none;
+    }
+    
+    /* Prevent page breaks inside entries */
+    .entry, article, .company-group, .role-entry {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Avoid orphaned section headers */
+    h2 {
+        page-break-after: avoid;
+        break-after: avoid;
+    }
+    
+    /* Allow breaks between sections */
+    section {
+        page-break-before: auto;
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+    
+    /* Keep header on first page */
+    header {
+        page-break-after: avoid;
     }
 }
 
