@@ -285,19 +285,42 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     html = html.replace("{{CONTACT_PHONE}}", contact.get("phone", ""))
     html = html.replace("{{CONTACT_LOCATION}}", contact.get("location", ""))
     
-    # Contact links - display readable URLs
+    # Contact links - build URLs from usernames
     links = []
     if contact.get("linkedin"):
-        linkedin_url = contact["linkedin"]
-        # Create readable display (remove https://, www.)
-        linkedin_display = linkedin_url.replace("https://", "").replace("http://", "").replace("www.", "")
+        linkedin_input = contact["linkedin"].strip()
+        # Handle both username-only and full URL input (backwards compatibility)
+        if "linkedin.com" in linkedin_input:
+            # Already a URL - extract and rebuild
+            linkedin_input = linkedin_input.replace("https://", "").replace("http://", "").replace("www.", "")
+            if linkedin_input.startswith("linkedin.com/in/"):
+                linkedin_input = linkedin_input.replace("linkedin.com/in/", "")
+        # Build clean URL and display
+        linkedin_url = f"https://www.linkedin.com/in/{linkedin_input}"
+        linkedin_display = f"linkedin.com/in/{linkedin_input}"
         links.append(f'<a href="{linkedin_url}">{linkedin_display}</a>')
+    
     if contact.get("github"):
-        github_url = contact["github"]
-        github_display = github_url.replace("https://", "").replace("http://", "").replace("www.", "")
+        github_input = contact["github"].strip()
+        # Handle both username-only and full URL input (backwards compatibility)
+        if "github.com" in github_input:
+            # Already a URL - extract and rebuild
+            github_input = github_input.replace("https://", "").replace("http://", "").replace("www.", "")
+            if github_input.startswith("github.com/"):
+                github_input = github_input.replace("github.com/", "")
+        # Build clean URL and display
+        github_url = f"https://github.com/{github_input}"
+        github_display = f"github.com/{github_input}"
         links.append(f'<a href="{github_url}">{github_display}</a>')
+    
     if contact.get("website"):
-        website_url = contact["website"]
+        website_input = contact["website"].strip()
+        # Ensure website has protocol
+        if website_input and not website_input.startswith(("http://", "https://")):
+            website_url = f"https://{website_input}"
+        else:
+            website_url = website_input
+        # Display without protocol
         website_display = website_url.replace("https://", "").replace("http://", "").replace("www.", "")
         links.append(f'<a href="{website_url}">{website_display}</a>')
     
@@ -305,8 +328,12 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     if links:
         links_html = " | " + " | ".join(links)
     html = html.replace("{{CONTACT_LINKS}}", links_html)
-    html = html.replace("{{CONTACT_LINKEDIN}}", contact.get("linkedin", ""))
-    html = html.replace("{{CONTACT_GITHUB}}", contact.get("github", ""))
+    
+    # For placeholders, provide the full formatted URLs
+    linkedin_input = contact.get("linkedin", "").strip()
+    github_input = contact.get("github", "").strip()
+    html = html.replace("{{CONTACT_LINKEDIN}}", f"linkedin.com/in/{linkedin_input}" if linkedin_input else "")
+    html = html.replace("{{CONTACT_GITHUB}}", f"github.com/{github_input}" if github_input else "")
     
     # Summary
     html = html.replace("{{SUMMARY}}", experiences.get("summary", ""))

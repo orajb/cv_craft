@@ -137,10 +137,11 @@ Content ordering rules:
 - Group multiple roles at the same company together under one company heading
 - Education should also be reverse chronological
 
-Link display rules:
-- LinkedIn URLs should be clickable AND display the readable URL (e.g., linkedin.com/in/username)
-- Do NOT display just "LinkedIn" as link text - show the actual URL path
-- Same applies to GitHub: display as github.com/username
+Link display rules (MUST follow exactly):
+- LinkedIn: href="https://www.linkedin.com/in/USERNAME" with display text "linkedin.com/in/USERNAME"
+- GitHub: href="https://github.com/USERNAME" with display text "github.com/USERNAME"
+- Do NOT use generic text like "LinkedIn" or "GitHub" - always show the readable URL path
+- Do NOT modify or override these link formats - they are provided pre-formatted
 """
 
 SYSTEM_INSTRUCTION_TEMPLATE = """You are a professional web designer specializing in 
@@ -159,11 +160,11 @@ Content ordering rules (build template structure to support):
 - Template should allow grouping multiple roles under one company
 - Education should also be reverse chronological
 
-Link display rules:
-- LinkedIn URLs should be both clickable AND display the readable URL
-- Example: <a href="https://linkedin.com/in/username">linkedin.com/in/username</a>
-- Do NOT use generic "LinkedIn" text - show the actual URL path without https://
-- Same for GitHub: <a href="https://github.com/username">github.com/username</a>
+Link display rules (MUST follow exactly):
+- LinkedIn format: <a href="https://www.linkedin.com/in/USERNAME">linkedin.com/in/USERNAME</a>
+- GitHub format: <a href="https://github.com/USERNAME">github.com/USERNAME</a>
+- Do NOT use generic text like "LinkedIn" or "GitHub" - always show the readable URL path
+- The {{CONTACT_LINKS}} placeholder will be pre-formatted - do NOT modify link formats
 """
 
 

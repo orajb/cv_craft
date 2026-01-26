@@ -300,8 +300,18 @@ with tab1:
             location = st.text_input("Location (City, Country)", value=contact.get("location", ""))
         
         with col2:
-            linkedin = st.text_input("LinkedIn URL", value=contact.get("linkedin", ""))
-            github = st.text_input("GitHub URL", value=contact.get("github", ""))
+            linkedin = st.text_input(
+                "LinkedIn Username",
+                value=contact.get("linkedin", ""),
+                placeholder="johndoe",
+                help="Just your username, e.g., 'johndoe' → linkedin.com/in/johndoe"
+            )
+            github = st.text_input(
+                "GitHub Username",
+                value=contact.get("github", ""),
+                placeholder="johndoe",
+                help="Just your username, e.g., 'johndoe' → github.com/johndoe"
+            )
             website = st.text_input("Website/Portfolio", value=contact.get("website", ""))
         
         if st.button("Save Contact Info", key="save_contact", type="primary"):
