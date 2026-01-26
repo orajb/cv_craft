@@ -806,8 +806,105 @@ h2 {
 '''
 
 
-def fill_template_with_experiences(template_html: str, experiences: dict) -> str:
-    """Fill template placeholders with actual experience data."""
+def get_compact_mode_css(level: str = "normal") -> str:
+    """Return CSS adjustments for compact modes."""
+    if level == "normal":
+        return ""
+    elif level == "compact":
+        return '''
+<style>
+/* Compact Mode */
+body {
+    font-size: 9.5pt !important;
+    line-height: 1.4 !important;
+    padding: 0.4in !important;
+}
+h1 { font-size: 20pt !important; margin-bottom: 0.3rem !important; }
+h2 { font-size: 10pt !important; margin-bottom: 0.5rem !important; }
+header { margin-bottom: 1rem !important; padding-bottom: 0.75rem !important; }
+section { margin-bottom: 0.9rem !important; }
+.entry, article { margin-bottom: 0.7rem !important; }
+.entry-header, .role-header { margin-bottom: 0.15rem !important; }
+ul { margin-top: 0.2rem !important; margin-left: 1rem !important; }
+li { margin-bottom: 0.1rem !important; font-size: 9.5pt !important; }
+.summary { font-size: 9.5pt !important; }
+.contact-info { font-size: 8.5pt !important; }
+.entry-date, .entry-location, .role-date { font-size: 8.5pt !important; }
+.skill-pill { padding: 0.15rem 0.4rem !important; font-size: 8pt !important; }
+.company-group { margin-bottom: 0.9rem !important; }
+.role-entry { margin-bottom: 0.5rem !important; padding-left: 0.5rem !important; }
+</style>
+'''
+    elif level == "very_compact":
+        return '''
+<style>
+/* Very Compact Mode */
+body {
+    font-size: 8.5pt !important;
+    line-height: 1.3 !important;
+    padding: 0.3in !important;
+}
+h1 { font-size: 18pt !important; margin-bottom: 0.2rem !important; }
+h2 { font-size: 9pt !important; margin-bottom: 0.4rem !important; letter-spacing: 0.5px !important; }
+header { margin-bottom: 0.75rem !important; padding-bottom: 0.5rem !important; }
+section { margin-bottom: 0.7rem !important; }
+.entry, article { margin-bottom: 0.5rem !important; }
+.entry-header, .role-header { margin-bottom: 0.1rem !important; }
+ul { margin-top: 0.15rem !important; margin-left: 0.9rem !important; }
+li { margin-bottom: 0.05rem !important; font-size: 8.5pt !important; }
+.summary { font-size: 8.5pt !important; }
+.contact-info { font-size: 8pt !important; gap: 0.3rem 1rem !important; }
+.entry-date, .entry-location, .role-date { font-size: 8pt !important; }
+.entry-title, .role-title { font-size: 9.5pt !important; }
+.entry-subtitle { font-size: 9pt !important; }
+.skill-pill { padding: 0.1rem 0.3rem !important; font-size: 7.5pt !important; }
+.skills-grid { gap: 0.3rem !important; }
+.company-group { margin-bottom: 0.7rem !important; }
+.company-header { margin-bottom: 0.3rem !important; padding-bottom: 0.15rem !important; }
+.role-entry { margin-bottom: 0.4rem !important; margin-left: 0.75rem !important; padding-left: 0.5rem !important; }
+.projects-list li, .certs-list li { margin-bottom: 0.3rem !important; padding-left: 0.5rem !important; }
+</style>
+'''
+    return ""
+
+
+def get_paginated_preview_css() -> str:
+    """Return CSS for paginated preview display (simulates printed pages)."""
+    return '''
+<style>
+/* Paginated Preview - simulates printed pages */
+@media screen {
+    html {
+        background: #525659 !important;
+    }
+    body {
+        background: white !important;
+        width: 8.5in !important;
+        min-height: 11in !important;
+        margin: 0.5in auto !important;
+        padding: 0.5in !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
+        box-sizing: border-box !important;
+    }
+}
+</style>
+'''
+
+
+def fill_template_with_experiences(
+    template_html: str, 
+    experiences: dict,
+    compact_mode: str = "normal",
+    show_page_preview: bool = False
+) -> str:
+    """Fill template placeholders with actual experience data.
+    
+    Args:
+        template_html: The HTML template with placeholders
+        experiences: Dict containing contact, work_experiences, education, etc.
+        compact_mode: "normal", "compact", or "very_compact"
+        show_page_preview: If True, adds CSS to simulate printed page appearance
+    """
     
     html = template_html
     contact = experiences.get("contact", {})
@@ -906,9 +1003,8 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
     # Remove empty sections
     html = _remove_empty_sections(html)
     
-    # Inject universal print CSS for ALL templates (including user-generated)
-    # This ensures consistent page break behavior across all templates
-    universal_print_css = '''
+    # Build injected CSS
+    injected_css = '''
 <style>
 /* Universal print styles - injected for all templates */
 @media print {
@@ -919,11 +1015,20 @@ def fill_template_with_experiences(template_html: str, experiences: dict) -> str
 }
 </style>
 '''
+    
+    # Add compact mode CSS if needed
+    if compact_mode != "normal":
+        injected_css += get_compact_mode_css(compact_mode)
+    
+    # Add paginated preview CSS if requested
+    if show_page_preview:
+        injected_css += get_paginated_preview_css()
+    
     # Insert before </head> if exists, otherwise before </body>
     if '</head>' in html:
-        html = html.replace('</head>', universal_print_css + '</head>')
+        html = html.replace('</head>', injected_css + '</head>')
     elif '</body>' in html:
-        html = html.replace('</body>', universal_print_css + '</body>')
+        html = html.replace('</body>', injected_css + '</body>')
     
     return html
 

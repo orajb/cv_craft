@@ -31,7 +31,8 @@ from cv_generator import (
     get_default_template_html, get_default_template_css,
     get_modern_clean_template_html, get_career_progression_template_html,
     fill_template_with_experiences, open_cv_in_browser,
-    save_cv_html, extract_html_from_response
+    save_cv_html, extract_html_from_response,
+    get_compact_mode_css, get_paginated_preview_css
 )
 
 # =============================================================================
@@ -207,6 +208,9 @@ def init_session_state():
         st.session_state.editing_template_name = None
     if "confirm_delete_template" not in st.session_state:
         st.session_state.confirm_delete_template = None
+    # CV display options
+    if "cv_compact_mode" not in st.session_state:
+        st.session_state.cv_compact_mode = "normal"
 
 init_session_state()
 
@@ -1138,8 +1142,20 @@ with tab3:
         st.subheader("Generated CV")
         
         if st.session_state.current_cv_html:
-            # Toggle between preview and edit
-            edit_cv_mode = st.toggle("Edit HTML", value=False, key="edit_cv_toggle")
+            # Display options row
+            col_edit, col_compact = st.columns([1, 1])
+            with col_edit:
+                edit_cv_mode = st.toggle("Edit HTML", value=False, key="edit_cv_toggle")
+            with col_compact:
+                compact_mode = st.selectbox(
+                    "Density",
+                    options=["normal", "compact", "very_compact"],
+                    format_func=lambda x: {"normal": "📄 Normal", "compact": "📑 Compact", "very_compact": "📃 Very Compact"}[x],
+                    key="cv_compact_select",
+                    help="Reduce margins and font sizes to fit more content"
+                )
+                if compact_mode != st.session_state.cv_compact_mode:
+                    st.session_state.cv_compact_mode = compact_mode
             
             if edit_cv_mode:
                 edited_cv = st.text_area(
@@ -1152,12 +1168,31 @@ with tab3:
                     st.success("Changes applied!")
                     st.rerun()
             else:
-                # Preview
+                # Preview with compact mode and page simulation
+                preview_html = st.session_state.current_cv_html
+                
+                # Inject compact mode CSS if not normal
+                if st.session_state.cv_compact_mode != "normal":
+                    compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
+                    if '</head>' in preview_html:
+                        preview_html = preview_html.replace('</head>', compact_css + '</head>')
+                    elif '</body>' in preview_html:
+                        preview_html = preview_html.replace('</body>', compact_css + '</body>')
+                
+                # Add page preview styling
+                page_preview_css = get_paginated_preview_css()
+                if '</head>' in preview_html:
+                    preview_html = preview_html.replace('</head>', page_preview_css + '</head>')
+                elif '</body>' in preview_html:
+                    preview_html = preview_html.replace('</body>', page_preview_css + '</body>')
+                
+                # Show preview
                 st.components.v1.html(
-                    st.session_state.current_cv_html,
-                    height=500,
+                    preview_html,
+                    height=700,
                     scrolling=True
                 )
+                st.caption("📄 Preview shows approximate page layout. Use 'Open in Browser' for accurate print preview.")
             
             # Action buttons
             st.divider()
@@ -1165,7 +1200,15 @@ with tab3:
             
             with col_a:
                 if st.button("🌐 Open in Browser", use_container_width=True):
-                    filepath = open_cv_in_browser(st.session_state.current_cv_html)
+                    # Apply compact mode when opening in browser too
+                    final_html = st.session_state.current_cv_html
+                    if st.session_state.cv_compact_mode != "normal":
+                        compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
+                        if '</head>' in final_html:
+                            final_html = final_html.replace('</head>', compact_css + '</head>')
+                        elif '</body>' in final_html:
+                            final_html = final_html.replace('</body>', compact_css + '</body>')
+                    filepath = open_cv_in_browser(final_html)
                     st.info(f"Opened! Use browser's Print → Save as PDF")
             
             with col_b:
@@ -1175,11 +1218,20 @@ with tab3:
                     jd = st.session_state.get("cv_job_description", "")
                     template_id = st.session_state.get("cv_template_id", "")
                     
+                    # Save with compact mode applied
+                    final_html = st.session_state.current_cv_html
+                    if st.session_state.cv_compact_mode != "normal":
+                        compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
+                        if '</head>' in final_html:
+                            final_html = final_html.replace('</head>', compact_css + '</head>')
+                        elif '</body>' in final_html:
+                            final_html = final_html.replace('</body>', compact_css + '</body>')
+                    
                     app_id = save_application(
                         company=company,
                         role=role,
                         job_description=jd,
-                        generated_html=st.session_state.current_cv_html,
+                        generated_html=final_html,
                         template_id=template_id
                     )
                     st.success(f"Application saved! ID: {app_id}")
@@ -1187,6 +1239,7 @@ with tab3:
             with col_c:
                 if st.button("🔄 Regenerate", use_container_width=True):
                     st.session_state.current_cv_html = ""
+                    st.session_state.cv_compact_mode = "normal"
                     st.rerun()
         else:
             st.info("Fill in the job details and click 'Generate CV' to create your tailored CV.")
