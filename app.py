@@ -201,6 +201,11 @@ def init_session_state():
         st.session_state.editing_cert_id = None
     if "editing_award_id" not in st.session_state:
         st.session_state.editing_award_id = None
+    # Template management
+    if "editing_template_name" not in st.session_state:
+        st.session_state.editing_template_name = None
+    if "confirm_delete_template" not in st.session_state:
+        st.session_state.confirm_delete_template = None
 
 init_session_state()
 
@@ -893,10 +898,76 @@ with tab2:
         selected_template = get_template(selected_id) if selected_id else None
         
         if selected_template:
-            st.markdown(f"**Editing:** {selected_template['name']}")
+            is_default = selected_template["id"] == default_id
+            
+            # Template name with edit capability
+            col_name, col_actions = st.columns([2, 1])
+            with col_name:
+                # Check if we're editing the name
+                if st.session_state.get("editing_template_name") == selected_template["id"]:
+                    new_name = st.text_input(
+                        "Template Name",
+                        value=selected_template["name"],
+                        key="template_name_input",
+                        label_visibility="collapsed"
+                    )
+                    col_save, col_cancel = st.columns(2)
+                    with col_save:
+                        if st.button("Save Name", use_container_width=True, type="primary"):
+                            if new_name.strip():
+                                update_template(selected_template["id"], {"name": new_name.strip()})
+                                st.session_state.editing_template_name = None
+                                st.toast("✅ Template renamed!", icon="✏️")
+                                st.rerun()
+                    with col_cancel:
+                        if st.button("Cancel", use_container_width=True):
+                            st.session_state.editing_template_name = None
+                            st.rerun()
+                else:
+                    default_badge = " ⭐" if is_default else ""
+                    st.markdown(f"### {selected_template['name']}{default_badge}")
+            
+            with col_actions:
+                if not st.session_state.get("editing_template_name"):
+                    if st.button("✏️ Rename", use_container_width=True):
+                        st.session_state.editing_template_name = selected_template["id"]
+                        st.rerun()
+            
+            # Template management buttons
+            col_default, col_delete = st.columns(2)
+            with col_default:
+                if not is_default:
+                    if st.button("⭐ Set as Default", use_container_width=True):
+                        set_default_template(selected_template["id"])
+                        st.toast("✅ Set as default template!", icon="⭐")
+                        st.rerun()
+                else:
+                    st.caption("✓ Default template")
+            with col_delete:
+                if st.button("🗑️ Delete Template", use_container_width=True):
+                    st.session_state.confirm_delete_template = selected_template["id"]
+                    st.rerun()
+            
+            # Delete confirmation
+            if st.session_state.get("confirm_delete_template") == selected_template["id"]:
+                st.warning(f"Are you sure you want to delete '{selected_template['name']}'?")
+                col_yes, col_no = st.columns(2)
+                with col_yes:
+                    if st.button("Yes, Delete", use_container_width=True, type="primary"):
+                        delete_template(selected_template["id"])
+                        st.session_state.selected_template_id = None
+                        st.session_state.confirm_delete_template = None
+                        st.toast("✅ Template deleted!", icon="🗑️")
+                        st.rerun()
+                with col_no:
+                    if st.button("Cancel", use_container_width=True, key="cancel_delete"):
+                        st.session_state.confirm_delete_template = None
+                        st.rerun()
+            
+            st.divider()
             
             # Edit mode toggle
-            edit_mode = st.toggle("Edit HTML", value=False)
+            edit_mode = st.toggle("Edit HTML", value=False, key="template_edit_mode")
             
             if edit_mode:
                 edited_html = st.text_area(
@@ -905,23 +976,10 @@ with tab2:
                     height=400
                 )
                 
-                col_a, col_b, col_c = st.columns(3)
-                with col_a:
-                    if st.button("Save Changes", use_container_width=True):
-                        update_template(selected_template["id"], {"html": edited_html})
-                        st.success("Template saved!")
-                        st.rerun()
-                with col_b:
-                    if st.button("Set as Default", use_container_width=True):
-                        set_default_template(selected_template["id"])
-                        st.success("Set as default!")
-                        st.rerun()
-                with col_c:
-                    if st.button("🗑️ Delete", use_container_width=True):
-                        delete_template(selected_template["id"])
-                        st.session_state.selected_template_id = None
-                        st.success("Template deleted!")
-                        st.rerun()
+                if st.button("💾 Save HTML Changes", use_container_width=True, type="primary"):
+                    update_template(selected_template["id"], {"html": edited_html})
+                    st.toast("✅ Template HTML saved!", icon="💾")
+                    st.rerun()
             else:
                 # Preview with sample data
                 experiences = load_experiences()
@@ -932,7 +990,7 @@ with tab2:
                 
                 st.components.v1.html(preview_html, height=600, scrolling=True)
                 
-                if st.button("Open in Browser", use_container_width=True):
+                if st.button("🌐 Open in Browser", use_container_width=True):
                     filepath = open_cv_in_browser(preview_html, f"template_preview_{selected_id}.html")
                     st.info(f"Opened in browser. File saved at: {filepath}")
         else:
