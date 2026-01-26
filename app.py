@@ -29,6 +29,7 @@ from gemini_client import (
 )
 from cv_generator import (
     get_default_template_html, get_default_template_css,
+    get_modern_clean_template_html, get_career_progression_template_html,
     fill_template_with_experiences, open_cv_in_browser,
     save_cv_html, extract_html_from_response
 )
@@ -834,31 +835,76 @@ with tab2:
     with col1:
         st.subheader("Your Templates")
         
-        # Add built-in default if no templates exist
-        if not templates_list:
-            if st.button("➕ Create Default Template", use_container_width=True):
-                template_id = save_template(
-                    name="Classic Professional",
-                    html_content=get_default_template_html(),
-                    css_content=get_default_template_css(),
-                    description="Clean, ATS-friendly single-column layout",
-                    set_as_default=True
-                )
-                st.success("Default template created!")
-                st.rerun()
+        # List existing templates first
+        if templates_list:
+            for template in templates_list:
+                is_default = template["id"] == default_id
+                badge = " ⭐" if is_default else ""
+                
+                if st.button(
+                    f"{template['name']}{badge}",
+                    key=f"select_template_{template['id']}",
+                    use_container_width=True
+                ):
+                    st.session_state.selected_template_id = template["id"]
+                    st.rerun()
+        else:
+            st.caption("No templates yet. Add one below!")
         
-        # List templates
-        for template in templates_list:
-            is_default = template["id"] == default_id
-            badge = " ⭐" if is_default else ""
-            
-            if st.button(
-                f"{template['name']}{badge}",
-                key=f"select_template_{template['id']}",
-                use_container_width=True
-            ):
-                st.session_state.selected_template_id = template["id"]
-                st.rerun()
+        st.divider()
+        
+        # Built-in templates
+        st.subheader("📦 Built-in Templates")
+        
+        # Check which built-in templates already exist
+        existing_names = [t["name"].lower() for t in templates_list]
+        
+        builtin_templates = [
+            {
+                "name": "Classic Professional",
+                "html_func": get_default_template_html,
+                "description": "Clean, ATS-friendly single-column layout. Traditional and professional.",
+                "icon": "📄"
+            },
+            {
+                "name": "Modern Clean",
+                "html_func": get_modern_clean_template_html,
+                "description": "Visually appealing with subtle green accents. Great for human recruiters.",
+                "icon": "✨"
+            },
+            {
+                "name": "Career Progression",
+                "html_func": get_career_progression_template_html,
+                "description": "Groups multiple roles at the same company to showcase growth.",
+                "icon": "📈"
+            }
+        ]
+        
+        for builtin in builtin_templates:
+            if builtin["name"].lower() not in existing_names:
+                col_btn, col_info = st.columns([2, 1])
+                with col_btn:
+                    if st.button(
+                        f"{builtin['icon']} Add {builtin['name']}",
+                        key=f"add_builtin_{builtin['name']}",
+                        use_container_width=True
+                    ):
+                        template_id = save_template(
+                            name=builtin["name"],
+                            html_content=builtin["html_func"](),
+                            css_content="",
+                            description=builtin["description"],
+                            set_as_default=len(templates_list) == 0
+                        )
+                        st.toast(f"✅ Added {builtin['name']}!", icon=builtin["icon"])
+                        st.session_state.selected_template_id = template_id
+                        st.rerun()
+                with col_info:
+                    st.caption(builtin["description"][:50] + "...")
+        
+        # Show if all built-in templates already added
+        if all(b["name"].lower() in existing_names for b in builtin_templates):
+            st.caption("✓ All built-in templates added")
         
         st.divider()
         
