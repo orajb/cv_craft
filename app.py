@@ -1084,8 +1084,15 @@ with tab3:
         
         user_instructions = st.text_area(
             "Additional Instructions (optional)",
-            placeholder="e.g., Emphasize my Python experience, keep it to 1 page, highlight leadership roles...",
+            placeholder="e.g., Emphasize my Python experience, highlight leadership roles...",
             height=100
+        )
+        
+        # Page length target
+        limit_one_page = st.checkbox(
+            "📄 Limit to 1 page",
+            value=False,
+            help="AI will be more concise. Compact mode will be auto-applied."
         )
         
         # Template selection
@@ -1118,7 +1125,8 @@ with tab3:
                             experiences=experiences,
                             job_description=job_description,
                             user_instructions=user_instructions,
-                            template_html=template["html"] if template else ""
+                            template_html=template["html"] if template else "",
+                            limit_one_page=limit_one_page
                         )
                         
                         response = client.generate_pro(prompt, SYSTEM_INSTRUCTION_CV)
@@ -1129,6 +1137,10 @@ with tab3:
                         st.session_state.cv_job_role = job_role
                         st.session_state.cv_job_description = job_description
                         st.session_state.cv_template_id = selected_template_id
+                        
+                        # Auto-apply compact mode if 1-page limit was requested
+                        if limit_one_page:
+                            st.session_state.cv_compact_mode = "compact"
                         
                         st.success("CV generated successfully!")
                         st.rerun()

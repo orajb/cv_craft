@@ -172,12 +172,27 @@ def create_cv_prompt(
     experiences: dict,
     job_description: str,
     user_instructions: str = "",
-    template_html: str = ""
+    template_html: str = "",
+    limit_one_page: bool = False
 ) -> str:
     """Create the prompt for CV generation."""
     
     # Format experiences into readable text
     exp_text = _format_experiences(experiences)
+    
+    # Page length guidance
+    if limit_one_page:
+        page_guidance = """STRICT 1-PAGE LIMIT:
+- Be highly concise - this CV MUST fit on a single page
+- Use 2-3 bullet points per role maximum
+- Focus only on the most impactful achievements
+- Keep descriptions brief but powerful
+- Omit less relevant experiences entirely"""
+    else:
+        page_guidance = """PAGE LENGTH:
+- Target 1-2 pages
+- Include comprehensive details for relevant experiences
+- 3-5 bullet points per role is acceptable"""
     
     prompt = f"""Based on the candidate's experience and the target job description, 
 create a tailored CV that highlights the most relevant qualifications.
@@ -191,12 +206,13 @@ create a tailored CV that highlights the most relevant qualifications.
 ## ADDITIONAL INSTRUCTIONS FROM USER:
 {user_instructions if user_instructions else "None provided."}
 
+## {page_guidance}
+
 ## TASK:
 1. Select the most relevant experiences, skills, and achievements for this specific role
 2. Tailor bullet points to match the job requirements
 3. Optimize for ATS keyword matching
-4. Keep it to 1-2 pages worth of content
-5. Use professional, impactful language
+4. Use professional, impactful language
 
 """
     
