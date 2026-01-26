@@ -34,16 +34,11 @@ if not exist "venv" (
 REM Activate venv
 call venv\Scripts\activate.bat
 
-REM Install dependencies if needed
-python -c "import streamlit" >nul 2>&1
-if %errorlevel% neq 0 (
-    echo → Installing dependencies...
-    pip install --upgrade pip -q
-    pip install -r requirements.txt -q
-    echo ✓ Dependencies installed
-) else (
-    echo ✓ Dependencies ready
-)
+REM Always sync dependencies (pip is fast when packages already installed)
+echo → Checking dependencies...
+pip install --upgrade pip -q 2>nul
+pip install -r requirements.txt -q 2>nul
+echo ✓ Dependencies ready
 
 REM Create data directory
 if not exist "data" mkdir data

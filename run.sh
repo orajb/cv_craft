@@ -61,15 +61,11 @@ setup_venv() {
 install_deps() {
     source venv/bin/activate
     
-    # Check if streamlit is installed
-    if ! python -c "import streamlit" &> /dev/null; then
-        echo -e "${YELLOW}→ Installing dependencies...${NC}"
-        pip install --upgrade pip -q
-        pip install -r requirements.txt -q
-        echo -e "${GREEN}✓ Dependencies installed${NC}"
-    else
-        echo -e "${GREEN}✓ Dependencies ready${NC}"
-    fi
+    # Always sync dependencies (pip is fast when packages already installed)
+    echo -e "${YELLOW}→ Checking dependencies...${NC}"
+    pip install --upgrade pip -q 2>/dev/null
+    pip install -r requirements.txt -q 2>/dev/null
+    echo -e "${GREEN}✓ Dependencies ready${NC}"
 }
 
 # Create data directory if needed
