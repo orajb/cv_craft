@@ -1413,6 +1413,37 @@ with tab4:
                                 )
                                 st.info("Opened in browser!")
                 
+                # Bullet points for copy-pasting
+                if app.get("generated_html"):
+                    with st.expander("📋 Copy Bullet Points (plain text)"):
+                        # Extract bullet points from HTML
+                        import re
+                        html_content = app["generated_html"]
+                        # Find all <li> content
+                        bullets = re.findall(r'<li[^>]*>(.*?)</li>', html_content, re.DOTALL | re.IGNORECASE)
+                        # Clean HTML tags from bullets
+                        clean_bullets = []
+                        for bullet in bullets:
+                            # Remove any nested HTML tags
+                            clean = re.sub(r'<[^>]+>', '', bullet)
+                            # Clean whitespace
+                            clean = ' '.join(clean.split())
+                            if clean:
+                                clean_bullets.append(clean)
+                        
+                        if clean_bullets:
+                            bullet_text = '\n'.join(clean_bullets)
+                            st.text_area(
+                                "Bullet points (select all & copy)",
+                                value=bullet_text,
+                                height=200,
+                                key=f"bullets_{app['id']}",
+                                label_visibility="collapsed"
+                            )
+                            st.caption(f"{len(clean_bullets)} bullet points extracted")
+                        else:
+                            st.caption("No bullet points found in this CV")
+                
                 # Notes
                 notes = st.text_area(
                     "Notes",

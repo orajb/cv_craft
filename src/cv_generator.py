@@ -35,22 +35,41 @@ def get_default_template_html() -> str:
             padding: 0.5in;
         }
         
+        @page {
+            margin: 0.5in 0.4in;
+        }
+        
+        @page :first {
+            margin-top: 0.4in;
+        }
+        
         @media print {
             body {
                 padding: 0.4in;
                 max-width: none;
+                margin-bottom: 0.4in;
             }
             
-            /* Keep bullet lists together (don't split mid-bullets) */
-            .entry ul, article ul {
+            /* Prevent page breaks inside entries */
+            .entry, article, .role-entry {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Prevent orphaned headers */
-            h2, .entry-header {
+            /* Avoid orphaned section headers */
+            h2 {
                 page-break-after: avoid;
                 break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
             }
         }
         
@@ -258,22 +277,41 @@ def get_modern_clean_template_html() -> str:
             padding: 0.6in 0.7in;
         }
         
+        @page {
+            margin: 0.5in 0.4in;
+        }
+        
+        @page :first {
+            margin-top: 0.4in;
+        }
+        
         @media print {
             body {
                 padding: 0.4in;
                 max-width: none;
+                margin-bottom: 0.4in;
             }
             
-            /* Keep bullet lists together (don't split mid-bullets) */
-            .entry ul, article ul {
+            /* Prevent page breaks inside entries */
+            .entry, article, .role-entry {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Prevent orphaned headers */
-            h2, .entry-header {
+            /* Avoid orphaned section headers */
+            h2 {
                 page-break-after: avoid;
                 break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
             }
         }
         
@@ -501,22 +539,41 @@ def get_career_progression_template_html() -> str:
             padding: 0.5in;
         }
         
+        @page {
+            margin: 0.5in 0.4in;
+        }
+        
+        @page :first {
+            margin-top: 0.4in;
+        }
+        
         @media print {
             body {
                 padding: 0.4in;
                 max-width: none;
+                margin-bottom: 0.4in;
             }
             
-            /* Keep bullet lists together (don't split mid-bullets) */
-            .entry ul, article ul, .role-entry ul {
+            /* Prevent page breaks inside entries */
+            .entry, article, .role-entry {
                 page-break-inside: avoid;
                 break-inside: avoid;
             }
             
-            /* Prevent orphaned headers */
-            h2, .entry-header, .company-header, .role-header {
+            /* Avoid orphaned section headers */
+            h2, .company-header {
                 page-break-after: avoid;
                 break-after: avoid;
+            }
+            
+            /* Allow breaks between sections */
+            section {
+                page-break-before: auto;
+            }
+            
+            /* Keep header on first page */
+            header {
+                page-break-after: avoid;
             }
         }
         
@@ -785,22 +842,41 @@ body {
     padding: 0.5in;
 }
 
+@page {
+    margin: 0.5in 0.4in;
+}
+
+@page :first {
+    margin-top: 0.4in;
+}
+
 @media print {
     body {
         padding: 0.4in;
         max-width: none;
+        margin-bottom: 0.4in;
     }
     
-    /* Keep bullet lists together (don't split mid-bullets) */
-    .entry ul, article ul {
+    /* Prevent page breaks inside entries */
+    .entry, article, .role-entry {
         page-break-inside: avoid;
         break-inside: avoid;
     }
     
-    /* Prevent orphaned headers */
-    h2, .entry-header {
+    /* Avoid orphaned section headers */
+    h2 {
         page-break-after: avoid;
         break-after: avoid;
+    }
+    
+    /* Allow breaks between sections */
+    section {
+        page-break-before: auto;
+    }
+    
+    /* Keep header on first page */
+    header {
+        page-break-after: avoid;
     }
 }
 
@@ -1031,17 +1107,39 @@ def fill_template_with_experiences(
     injected_css = '''
 <style>
 /* Universal print styles - injected for all templates */
+@page {
+    margin: 0.5in 0.4in;
+}
+
+@page :first {
+    margin-top: 0.4in;
+}
+
 @media print {
-    /* Keep bullet lists together (don't split mid-bullets) */
-    .entry ul, article ul, .role-entry ul {
+    body {
+        margin-bottom: 0.4in;
+    }
+    
+    /* Prevent page breaks inside entries */
+    .entry, article, .role-entry {
         page-break-inside: avoid;
         break-inside: avoid;
     }
     
-    /* Prevent orphaned headers - keep header with first content */
-    h2, h3, .company-header, .entry-header {
+    /* Avoid orphaned section headers */
+    h2, h3, .company-header {
         page-break-after: avoid;
         break-after: avoid;
+    }
+    
+    /* Allow breaks between sections */
+    section {
+        page-break-before: auto;
+    }
+    
+    /* Keep header on first page */
+    header {
+        page-break-after: avoid;
     }
 }
 </style>
