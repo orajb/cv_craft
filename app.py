@@ -1,5 +1,5 @@
 """
-Job Hunter - AI-Powered CV Generator
+CV Crafter - AI-Powered CV Generator
 A local tool for creating machine-readable CVs with Gemini AI assistance.
 """
 
@@ -40,7 +40,7 @@ from cv_generator import (
 # =============================================================================
 
 st.set_page_config(
-    page_title="Job Hunter",
+    page_title="CV Crafter",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -221,7 +221,7 @@ init_session_state()
 # =============================================================================
 
 with st.sidebar:
-    st.title("🎯 Job Hunter")
+    st.title("🎯 CV Crafter")
     st.caption("AI-Powered CV Generator")
     
     st.divider()

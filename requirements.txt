@@ -1,4 +1,4 @@
-# Job Hunter - CV Generator
+# CV Crafter - CV Generator
 # Python 3.10+ required
 
 # Web Framework

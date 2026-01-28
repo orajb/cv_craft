@@ -1,4 +1,4 @@
-# 🎯 Job Hunter
+# 🎯 CV Crafter
 
 **AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance. This project is vibecoded in its entirey. 
 
@@ -33,7 +33,7 @@
 
 **macOS/Linux:**
 ```bash
-cd "Job Hunter"
+cd "CV Crafter"
 ./run.sh
 ```
 
@@ -52,7 +52,7 @@ The app opens in your browser at `http://localhost:8501`
 ### Manual Installation (Alternative)
 
 ```bash
-cd "Job Hunter"
+cd "CV Crafter"
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -160,7 +160,7 @@ data/
 ### Project Structure
 
 ```
-Job Hunter/
+CV Crafter/
 ├── app.py                    # Main Streamlit application
 ├── run.sh                    # One-command launcher (macOS/Linux)
 ├── run.bat                   # One-command launcher (Windows)

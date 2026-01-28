@@ -1,9 +1,9 @@
 @echo off
-REM Job Hunter - Windows Launcher
+REM CV Crafter - Windows Launcher
 REM Usage: Double-click run.bat or run from command prompt
 
 echo.
-echo 🎯 Job Hunter - AI-Powered CV Generator
+echo 🎯 CV Crafter - AI-Powered CV Generator
 echo ========================================
 echo.
 
@@ -44,7 +44,7 @@ REM Create data directory
 if not exist "data" mkdir data
 
 echo.
-echo 🚀 Starting Job Hunter...
+echo 🚀 Starting CV Crafter...
 echo    Opening in your browser at http://localhost:8501
 echo    Press Ctrl+C to stop
 echo.

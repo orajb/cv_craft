@@ -1,5 +1,5 @@
 #!/bin/bash
-# Job Hunter - One-Command Launcher
+# CV Crafter - One-Command Launcher
 # Usage: ./run.sh
 
 set -e
@@ -14,7 +14,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo ""
-echo "🎯 Job Hunter - AI-Powered CV Generator"
+echo "🎯 CV Crafter - AI-Powered CV Generator"
 echo "========================================"
 echo ""
 
@@ -78,7 +78,7 @@ setup_data() {
 # Run the app
 run_app() {
     echo ""
-    echo -e "${GREEN}🚀 Starting Job Hunter...${NC}"
+    echo -e "${GREEN}🚀 Starting CV Crafter...${NC}"
     echo -e "   Opening in your browser at ${YELLOW}http://localhost:8501${NC}"
     echo -e "   Press ${YELLOW}Ctrl+C${NC} to stop"
     echo ""
