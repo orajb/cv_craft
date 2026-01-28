@@ -1,6 +1,6 @@
 # 🎯 Job Hunter
 
-**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini AI assistance.
+**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance. This project is vibecoded in its entirey. 
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red)
