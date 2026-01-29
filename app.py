@@ -260,20 +260,11 @@ def extract_experiences_from_html(html: str) -> list:
     
     # Strategy 1: Find <article class="entry"> elements (standard structure)
     article_pattern = r'<article[^>]*class\s*=\s*["\']entry["\'][^>]*>(.*?)</article>'
-    matches = re.findall(article_pattern, search_html, re.DOTALL | re.IGNORECASE)
-    
-    # Strategy 2: Also check for role-entry (Career Progression template)
-    role_entry_pattern = r'<div[^>]*class\s*=\s*["\']role-entry["\'][^>]*>(.*?)</div>'
-    role_matches = re.findall(role_entry_pattern, search_html, re.DOTALL | re.IGNORECASE)
-    
-    # Strategy 3: If no articles found, try <article> without specific class
-    if not matches and not role_matches:
-        article_pattern = r'<article[^>]*>(.*?)</article>'
-        matches = re.findall(article_pattern, search_html, re.DOTALL | re.IGNORECASE)
+    article_matches = re.findall(article_pattern, search_html, re.DOTALL | re.IGNORECASE)
     
     # Process standard article entries
-    for match in matches:
-        # Extract title/role - try multiple patterns
+    for match in article_matches:
+        # Extract title/role
         title = ""
         title_patterns = [
             r'<span[^>]*class\s*=\s*["\']entry-title["\'][^>]*>(.*?)</span>',
@@ -288,7 +279,7 @@ def extract_experiences_from_html(html: str) -> list:
         if not title:
             title = f"Entry {entry_index+1}"
         
-        # Extract company - try multiple patterns
+        # Extract company
         company = ""
         company_patterns = [
             r'<span[^>]*class\s*=\s*["\']entry-subtitle["\'][^>]*>(.*?)</span>',
@@ -317,25 +308,39 @@ def extract_experiences_from_html(html: str) -> list:
             })
             entry_index += 1
     
-    # Process role-entry elements (Career Progression template grouped roles)
-    # First find company context for role entries
-    company_groups = re.findall(
-        r'<div[^>]*class\s*=\s*["\']company-group["\'][^>]*>(.*?)</div>\s*</div>',
-        search_html, re.DOTALL | re.IGNORECASE
-    )
+    # Strategy 2: Find role-entry elements (Career Progression template)
+    # These are inside company-group divs, but we'll find them directly
+    # and look backwards for the company name
     
-    for group in company_groups:
-        # Extract company name from group header
-        company_match = re.search(
-            r'<span[^>]*class\s*=\s*["\']company-name["\'][^>]*>(.*?)</span>',
-            group, re.IGNORECASE | re.DOTALL
-        )
-        company_name = re.sub(r'<[^>]+>', '', company_match.group(1)).strip() if company_match else ""
+    # Find all role-entry positions and their content
+    role_pattern = r'<div[^>]*class\s*=\s*["\']role-entry["\'][^>]*>'
+    
+    for role_match in re.finditer(role_pattern, search_html, re.IGNORECASE):
+        role_start = role_match.end()
         
-        # Find role entries within this company group
-        roles = re.findall(role_entry_pattern, group, re.DOTALL | re.IGNORECASE)
+        # Find the matching closing </div> - count nested divs
+        div_count = 1
+        pos = role_start
+        while div_count > 0 and pos < len(search_html):
+            next_open = search_html.find('<div', pos)
+            next_close = search_html.find('</div>', pos)
+            
+            if next_close == -1:
+                break
+            
+            if next_open != -1 and next_open < next_close:
+                div_count += 1
+                pos = next_open + 4
+            else:
+                div_count -= 1
+                if div_count == 0:
+                    role_end = next_close
+                else:
+                    pos = next_close + 6
         
-        for role_html in roles:
+        if div_count == 0:
+            role_html = search_html[role_start:role_end]
+            
             # Extract role title
             title = ""
             role_title_match = re.search(
@@ -347,6 +352,22 @@ def extract_experiences_from_html(html: str) -> list:
             
             if not title:
                 title = f"Role {entry_index+1}"
+            
+            # Look backwards from role-entry to find company-name
+            company_name = ""
+            text_before = search_html[:role_match.start()]
+            company_name_match = re.search(
+                r'<span[^>]*class\s*=\s*["\']company-name["\'][^>]*>(.*?)</span>',
+                text_before, re.IGNORECASE | re.DOTALL
+            )
+            if company_name_match:
+                # Find the LAST company-name before this role-entry
+                all_companies = list(re.finditer(
+                    r'<span[^>]*class\s*=\s*["\']company-name["\'][^>]*>(.*?)</span>',
+                    text_before, re.IGNORECASE | re.DOTALL
+                ))
+                if all_companies:
+                    company_name = re.sub(r'<[^>]+>', '', all_companies[-1].group(1)).strip()
             
             # Extract bullets
             bullets = re.findall(r'<li[^>]*>(.*?)</li>', role_html, re.DOTALL | re.IGNORECASE)
@@ -360,6 +381,30 @@ def extract_experiences_from_html(html: str) -> list:
                     "bullets": bullets,
                     "raw_html": role_html,
                     "type": "role-entry"
+                })
+                entry_index += 1
+    
+    # Strategy 3: If still nothing found, try generic <article> tags
+    if not experiences:
+        article_pattern = r'<article[^>]*>(.*?)</article>'
+        for match in re.findall(article_pattern, search_html, re.DOTALL | re.IGNORECASE):
+            bullets = re.findall(r'<li[^>]*>(.*?)</li>', match, re.DOTALL | re.IGNORECASE)
+            bullets = [re.sub(r'<[^>]+>', '', b).strip() for b in bullets if b.strip()]
+            
+            if bullets:
+                # Try to extract any title-like element
+                title = f"Entry {entry_index+1}"
+                title_match = re.search(r'<(?:h3|strong|b)[^>]*>(.*?)</(?:h3|strong|b)>', match, re.IGNORECASE)
+                if title_match:
+                    title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
+                
+                experiences.append({
+                    "index": entry_index,
+                    "title": title,
+                    "company": "",
+                    "bullets": bullets,
+                    "raw_html": match,
+                    "type": "article"
                 })
                 entry_index += 1
     
@@ -384,6 +429,33 @@ def update_summary_in_html(html: str, new_summary: str) -> str:
             return re.sub(pattern, rf'\g<1>{escaped_summary}\g<3>', html, count=1, flags=re.DOTALL | re.IGNORECASE)
     return html
 
+def find_matching_close_tag(html: str, start_pos: int, tag_name: str) -> int:
+    """Find the position of the closing tag that matches the opening tag at start_pos.
+    Handles nested tags of the same type."""
+    open_pattern = f'<{tag_name}'
+    close_pattern = f'</{tag_name}>'
+    
+    count = 1
+    pos = start_pos
+    
+    while count > 0 and pos < len(html):
+        next_open = html.lower().find(open_pattern.lower(), pos)
+        next_close = html.lower().find(close_pattern.lower(), pos)
+        
+        if next_close == -1:
+            return -1
+        
+        if next_open != -1 and next_open < next_close:
+            count += 1
+            pos = next_open + len(open_pattern)
+        else:
+            count -= 1
+            if count == 0:
+                return next_close
+            pos = next_close + len(close_pattern)
+    
+    return -1
+
 def update_experience_bullets_in_html(html: str, exp_index: int, new_bullets: list, entry_type: str = "article") -> str:
     """Update bullet points for a specific experience entry.
     
@@ -400,7 +472,6 @@ def update_experience_bullets_in_html(html: str, exp_index: int, new_bullets: li
     )
     
     if not exp_section_match:
-        # No experience section found, work with full HTML
         search_html = html
         prefix = ""
         suffix = ""
@@ -409,50 +480,76 @@ def update_experience_bullets_in_html(html: str, exp_index: int, new_bullets: li
         search_html = exp_section_match.group(2)
         suffix = exp_section_match.group(3) + html[exp_section_match.end():]
     
-    # Collect all entries with their positions
+    # Collect all entries with their positions and full content
     all_entries = []
     
-    # Find article entries
-    for m in re.finditer(r'(<article[^>]*>)(.*?)(</article>)', search_html, re.DOTALL | re.IGNORECASE):
-        if '<ul' in m.group(2).lower():
-            all_entries.append({
-                "match": m,
-                "type": "article",
-                "start": m.start(),
-                "end": m.end()
-            })
+    # Find article entries (these don't have nesting issues)
+    for m in re.finditer(r'<article[^>]*class\s*=\s*["\']entry["\'][^>]*>', search_html, re.IGNORECASE):
+        tag_start = m.start()
+        content_start = m.end()
+        close_pos = find_matching_close_tag(search_html, content_start, 'article')
+        
+        if close_pos != -1:
+            content = search_html[content_start:close_pos]
+            if '<ul' in content.lower():
+                all_entries.append({
+                    "type": "article",
+                    "start": tag_start,
+                    "content_start": content_start,
+                    "content_end": close_pos,
+                    "end": close_pos + len('</article>'),
+                    "opening_tag": m.group(0),
+                    "content": content
+                })
     
-    # Find role-entry entries
-    for m in re.finditer(r'(<div[^>]*class\s*=\s*["\']role-entry["\'][^>]*>)(.*?)(</div>)', search_html, re.DOTALL | re.IGNORECASE):
-        if '<ul' in m.group(2).lower():
-            all_entries.append({
-                "match": m,
-                "type": "role-entry",
-                "start": m.start(),
-                "end": m.end()
-            })
+    # Find role-entry divs (handle nested divs properly)
+    for m in re.finditer(r'<div[^>]*class\s*=\s*["\']role-entry["\'][^>]*>', search_html, re.IGNORECASE):
+        tag_start = m.start()
+        content_start = m.end()
+        close_pos = find_matching_close_tag(search_html, content_start, 'div')
+        
+        if close_pos != -1:
+            content = search_html[content_start:close_pos]
+            if '<ul' in content.lower():
+                all_entries.append({
+                    "type": "role-entry",
+                    "start": tag_start,
+                    "content_start": content_start,
+                    "content_end": close_pos,
+                    "end": close_pos + len('</div>'),
+                    "opening_tag": m.group(0),
+                    "content": content
+                })
     
     # Sort by position in document
     all_entries.sort(key=lambda x: x["start"])
     
     if exp_index < len(all_entries):
         entry = all_entries[exp_index]
-        match = entry["match"]
-        entry_html = match.group(2)
+        entry_content = entry["content"]
         
-        # Build new <ul> content with proper indentation
+        # Build new <ul> content
         new_ul_content = '\n                        '.join([f'<li>{bullet}</li>' for bullet in new_bullets if bullet.strip()])
         
         # Replace the <ul>...</ul> content
-        updated_entry = re.sub(
+        updated_content = re.sub(
             r'<ul[^>]*>.*?</ul>',
             f'<ul>\n                        {new_ul_content}\n                    </ul>',
-            entry_html,
+            entry_content,
             flags=re.DOTALL | re.IGNORECASE
         )
         
+        # Determine closing tag
+        close_tag = '</article>' if entry["type"] == "article" else '</div>'
+        
         # Reconstruct the search_html
-        search_html = search_html[:match.start()] + match.group(1) + updated_entry + match.group(3) + search_html[match.end():]
+        search_html = (
+            search_html[:entry["start"]] + 
+            entry["opening_tag"] + 
+            updated_content + 
+            close_tag + 
+            search_html[entry["end"]:]
+        )
     
     # Reconstruct full HTML
     if exp_section_match:
