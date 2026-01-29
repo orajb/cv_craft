@@ -1,6 +1,6 @@
 # 🎯 CV Crafter
 
-**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance. This project is vibecoded in its entirety. 
+**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance with user's own API. All data is stored locally. This is a spec driven development project. 
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red)
