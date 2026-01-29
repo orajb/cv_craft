@@ -1,10 +1,11 @@
 # 🎯 CV Crafter
 
-**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance. This project is vibecoded in its entirey. 
+**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance. This project is vibecoded in its entirety. 
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red)
 ![Gemini](https://img.shields.io/badge/Gemini-API-yellow)
+![Claude](https://img.shields.io/badge/Claude-API-purple)
 
 ---
 
@@ -16,24 +17,36 @@
 - **🎨 Template Editor** — Create and customize CV templates with AI assistance
 - **✨ CV Generator** — Paste a job description and let AI create a tailored CV
 - **📚 Application History** — Track all your applications with their generated CVs
-- **🤖 Gemini AI Integration** — Uses `gemini-3-pro-preview` with fallback to `gemini-2.5-pro`
+- **🤖 Multi-AI Support** — Works with both Google Gemini and Anthropic Claude
 - **🔒 Local-First** — All data stored locally, API key never saved to disk
-- **🚀 One-Command Setup** — `./run.sh` handles venv, dependencies, and launch
+- **🚀 One-Command Setup** — Download, run, done!
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Step 1: Download
 
-- **Python 3.10+** — [Download here](https://www.python.org/downloads/) if not installed
-- **Gemini API Key** — [Get one free](https://makersuite.google.com/app/apikey)
+**Option A: Git Clone**
+```bash
+git clone https://github.com/orajb/cv_craft.git
+cd cv_craft
+```
 
-### One-Command Launch
+**Option B: Download ZIP**
+1. Click the green **Code** button on GitHub
+2. Select **Download ZIP**
+3. Extract the folder
+
+### Step 2: Run
+
+**Easiest (any OS):**
+```bash
+python start.py
+```
 
 **macOS/Linux:**
 ```bash
-cd "CV Crafter"
 ./run.sh
 ```
 
@@ -42,24 +55,18 @@ cd "CV Crafter"
 Double-click run.bat
 ```
 
-That's it! The script automatically:
+That's it! The launcher automatically:
 - ✓ Creates a virtual environment
 - ✓ Installs all dependencies  
-- ✓ Launches the app
+- ✓ Launches the app at `http://localhost:8501`
 
-The app opens in your browser at `http://localhost:8501`
+### Step 3: Get an API Key
 
-### Manual Installation (Alternative)
+You need ONE of these (not both):
+- **Gemini API Key** — [Get free](https://makersuite.google.com/app/apikey)
+- **Claude API Key** — [Get from Anthropic](https://console.anthropic.com/)
 
-```bash
-cd "CV Crafter"
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-### 4. First-Time Setup
+### First-Time Setup
 
 1. **Enter your Gemini API key** in the sidebar
 2. **Click "Test Connection"** to verify it works
