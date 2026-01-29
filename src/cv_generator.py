@@ -1452,7 +1452,7 @@ def open_cv_in_browser(html_content: str, filename: str = "cv_preview.html") -> 
     """Save HTML to temp file and open in browser. Returns the file path."""
     
     # Create temp directory if needed
-    temp_dir = Path(tempfile.gettempdir()) / "job_hunter"
+    temp_dir = Path(tempfile.gettempdir()) / "cv_crafter"
     temp_dir.mkdir(exist_ok=True)
     
     filepath = temp_dir / filename

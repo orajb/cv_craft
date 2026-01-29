@@ -292,6 +292,18 @@ def extract_experiences_from_html(html: str) -> list:
                 company = re.sub(r'<[^>]+>', '', company_match.group(1)).strip()
                 break
         
+        # Extract date
+        date = ""
+        date_patterns = [
+            r'<span[^>]*class\s*=\s*["\']entry-date["\'][^>]*>(.*?)</span>',
+            r'<span[^>]*class\s*=\s*["\']date["\'][^>]*>(.*?)</span>',
+        ]
+        for dp in date_patterns:
+            date_match = re.search(dp, match, re.IGNORECASE | re.DOTALL)
+            if date_match:
+                date = re.sub(r'<[^>]+>', '', date_match.group(1)).strip()
+                break
+        
         # Extract bullet points
         bullets = re.findall(r'<li[^>]*>(.*?)</li>', match, re.DOTALL | re.IGNORECASE)
         bullets = [re.sub(r'<[^>]+>', '', b).strip() for b in bullets if b.strip()]
@@ -302,6 +314,7 @@ def extract_experiences_from_html(html: str) -> list:
                 "index": entry_index,
                 "title": title,
                 "company": company,
+                "date": date,
                 "bullets": bullets,
                 "raw_html": match,
                 "type": "article"
@@ -350,6 +363,15 @@ def extract_experiences_from_html(html: str) -> list:
             if role_title_match:
                 title = re.sub(r'<[^>]+>', '', role_title_match.group(1)).strip()
             
+            # Extract role date
+            date = ""
+            role_date_match = re.search(
+                r'<span[^>]*class\s*=\s*["\']role-date["\'][^>]*>(.*?)</span>',
+                role_html, re.IGNORECASE | re.DOTALL
+            )
+            if role_date_match:
+                date = re.sub(r'<[^>]+>', '', role_date_match.group(1)).strip()
+            
             if not title:
                 title = f"Role {entry_index+1}"
             
@@ -378,6 +400,7 @@ def extract_experiences_from_html(html: str) -> list:
                     "index": entry_index,
                     "title": title,
                     "company": company_name,
+                    "date": date,
                     "bullets": bullets,
                     "raw_html": role_html,
                     "type": "role-entry"
@@ -402,6 +425,7 @@ def extract_experiences_from_html(html: str) -> list:
                     "index": entry_index,
                     "title": title,
                     "company": "",
+                    "date": "", # Default for Strategy 3
                     "bullets": bullets,
                     "raw_html": match,
                     "type": "article"
@@ -719,8 +743,9 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
                     compact_css = get_compact_mode_css(compact_mode)
                     if '</head>' in final_html:
                         final_html = final_html.replace('</head>', compact_css + '</head>')
-                open_cv_in_browser(final_html)
-                st.info("Opened! Use browser's Print → Save as PDF")
+                
+                filepath = open_cv_in_browser(final_html, f"cv_{key_prefix}.html")
+                st.info(f"Opened! Use browser's Print → Save as PDF")
         col_idx += 1
     
     return current_html
@@ -798,7 +823,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📝 Experience Bank",
     "🎨 Template Editor", 
     "✨ CV Generator",
-    "📚 Application History"
+    "📚 Applications & CVs"
 ])
 
 # =============================================================================
@@ -1853,33 +1878,36 @@ with tab4:
                 # Bullet points for copy-pasting
                 if app.get("generated_html"):
                     with st.expander("📋 Copy Bullet Points (plain text)"):
-                        # Extract bullet points from HTML
-                        import re
-                        html_content = app["generated_html"]
-                        # Find all <li> content
-                        bullets = re.findall(r'<li[^>]*>(.*?)</li>', html_content, re.DOTALL | re.IGNORECASE)
-                        # Clean HTML tags from bullets
-                        clean_bullets = []
-                        for bullet in bullets:
-                            # Remove any nested HTML tags
-                            clean = re.sub(r'<[^>]+>', '', bullet)
-                            # Clean whitespace
-                            clean = ' '.join(clean.split())
-                            if clean:
-                                clean_bullets.append(clean)
+                        # Extract structured experiences
+                        extracted_exps = extract_experiences_from_html(app["generated_html"])
                         
-                        if clean_bullets:
-                            bullet_text = '\n'.join(clean_bullets)
+                        if extracted_exps:
+                            sections = []
+                            total_bullets = 0
+                            for exp in extracted_exps:
+                                # Build header
+                                header_parts = []
+                                if exp.get("company"): header_parts.append(exp["company"])
+                                if exp.get("title"): header_parts.append(exp["title"])
+                                if exp.get("date"): header_parts.append(exp["date"])
+                                
+                                header = " — ".join(header_parts)
+                                bullets_text = "\n".join([f"{b}" for b in exp["bullets"]])
+                                sections.append(f"{header}\n{bullets_text}")
+                                total_bullets += len(exp["bullets"])
+                            
+                            bullet_text = "\n\n".join(sections)
+                            
                             st.text_area(
                                 "Bullet points (select all & copy)",
                                 value=bullet_text,
-                                height=200,
+                                height=300,
                                 key=f"bullets_{app['id']}",
                                 label_visibility="collapsed"
                             )
-                            st.caption(f"{len(clean_bullets)} bullet points extracted")
+                            st.caption(f"{total_bullets} bullet points extracted from {len(extracted_exps)} sections")
                         else:
-                            st.caption("No bullet points found in this CV")
+                            st.caption("No experience sections with bullet points found in this CV")
                 
                 # Notes
                 notes = st.text_area(
