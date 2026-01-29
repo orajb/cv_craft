@@ -17,17 +17,17 @@
 
 ## ✨ Features
 
+- **✨ Generate HTML CV with Full CRUD** — Create tailored CVs from job descriptions and save them as PDF
+  - **Save for PDF** — Generate ATS-friendly HTML that is perfectly optimized for browser "Print to PDF"
+  - **Full Control** — Use Quick Edit Mode to tweak bullets or access logic if needed
+  - **Density Options** — Choose Normal, Compact, or Very Compact layouts
 - **📝 Experience Bank** — Store all your work experiences, education, skills, and projects in one place
   - Full CRUD: Add, Edit, Delete for all entry types
   - Toast notifications for instant feedback
 - **🎨 Template Editor** — Create and customize CV templates with AI assistance
   - 3 built-in templates: Classic Professional, Modern Clean, Career Progression
-- **✨ CV Generator** — Paste a job description and let AI create a tailored CV
-  - **Quick Edit Mode** — Edit summary and experience bullets directly without touching HTML
-  - Density options (Normal/Compact/Very Compact)
-  - 1-page limit toggle
 - **📚 Application History** — Track all your applications with their generated CVs
-  - Edit saved CVs with Quick Edit or Raw HTML
+  - Edit saved CVs anytime
   - Extract bullet points as plain text for application forms
 - **🤖 Multi-AI Support** — Works with both Google Gemini and Anthropic Claude
 - **🔒 Local-First** — All data stored locally, API key never saved to disk
