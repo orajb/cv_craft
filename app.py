@@ -217,6 +217,271 @@ def init_session_state():
 init_session_state()
 
 # =============================================================================
+# REUSABLE CV EDITOR COMPONENT
+# =============================================================================
+
+import re
+
+def extract_summary_from_html(html: str) -> str:
+    """Extract the summary/profile text from CV HTML."""
+    # Try to find content in summary section
+    patterns = [
+        r'<section[^>]*id=["\']?summary["\']?[^>]*>.*?<p[^>]*>(.*?)</p>',
+        r'<section[^>]*class=["\']?[^"\']*summary[^"\']*["\']?[^>]*>.*?<p[^>]*>(.*?)</p>',
+        r'<p[^>]*class=["\']?[^"\']*summary[^"\']*["\']?[^>]*>(.*?)</p>',
+        r'<div[^>]*class=["\']?[^"\']*summary[^"\']*["\']?[^>]*>(.*?)</div>',
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, html, re.DOTALL | re.IGNORECASE)
+        if match:
+            # Clean HTML tags from the content
+            text = re.sub(r'<[^>]+>', '', match.group(1))
+            return text.strip()
+    return ""
+
+def extract_experiences_from_html(html: str) -> list:
+    """Extract individual experience entries from CV HTML."""
+    experiences = []
+    
+    # Find all article or entry elements
+    entry_patterns = [
+        r'<article[^>]*class=["\']?[^"\']*entry[^"\']*["\']?[^>]*>(.*?)</article>',
+        r'<div[^>]*class=["\']?[^"\']*entry[^"\']*["\']?[^>]*>(.*?)</div>',
+    ]
+    
+    for pattern in entry_patterns:
+        matches = re.findall(pattern, html, re.DOTALL | re.IGNORECASE)
+        for i, match in enumerate(matches):
+            # Extract title/role
+            title_match = re.search(r'<span[^>]*class=["\']?entry-title["\']?[^>]*>(.*?)</span>', match, re.IGNORECASE)
+            title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip() if title_match else f"Entry {i+1}"
+            
+            # Extract company
+            company_match = re.search(r'<span[^>]*class=["\']?entry-subtitle["\']?[^>]*>(.*?)</span>', match, re.IGNORECASE)
+            company = re.sub(r'<[^>]+>', '', company_match.group(1)).strip() if company_match else ""
+            
+            # Extract bullet points
+            bullets = re.findall(r'<li[^>]*>(.*?)</li>', match, re.DOTALL | re.IGNORECASE)
+            bullets = [re.sub(r'<[^>]+>', '', b).strip() for b in bullets]
+            
+            experiences.append({
+                "index": i,
+                "title": title,
+                "company": company,
+                "bullets": bullets,
+                "raw_html": match
+            })
+        
+        if experiences:
+            break
+    
+    return experiences
+
+def update_summary_in_html(html: str, new_summary: str) -> str:
+    """Update the summary text in the HTML."""
+    patterns = [
+        (r'(<section[^>]*id=["\']?summary["\']?[^>]*>.*?<p[^>]*>)(.*?)(</p>)', r'\1' + new_summary + r'\3'),
+        (r'(<section[^>]*class=["\']?[^"\']*summary[^"\']*["\']?[^>]*>.*?<p[^>]*>)(.*?)(</p>)', r'\1' + new_summary + r'\3'),
+    ]
+    for pattern, replacement in patterns:
+        if re.search(pattern, html, re.DOTALL | re.IGNORECASE):
+            return re.sub(pattern, replacement, html, count=1, flags=re.DOTALL | re.IGNORECASE)
+    return html
+
+def update_experience_bullets_in_html(html: str, exp_index: int, new_bullets: list) -> str:
+    """Update bullet points for a specific experience entry."""
+    # Find all entries
+    entry_pattern = r'(<article[^>]*class=["\']?[^"\']*entry[^"\']*["\']?[^>]*>)(.*?)(</article>)'
+    matches = list(re.finditer(entry_pattern, html, re.DOTALL | re.IGNORECASE))
+    
+    if exp_index < len(matches):
+        match = matches[exp_index]
+        entry_html = match.group(2)
+        
+        # Replace the <ul> content
+        new_ul_content = '\n'.join([f'<li>{bullet}</li>' for bullet in new_bullets if bullet.strip()])
+        updated_entry = re.sub(
+            r'<ul[^>]*>.*?</ul>',
+            f'<ul>{new_ul_content}</ul>',
+            entry_html,
+            flags=re.DOTALL | re.IGNORECASE
+        )
+        
+        # Reconstruct HTML
+        html = html[:match.start()] + match.group(1) + updated_entry + match.group(3) + html[match.end():]
+    
+    return html
+
+def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_save_button=True, 
+                     show_open_browser=True, compact_mode_key=None):
+    """
+    Render a unified CV editor component.
+    
+    Args:
+        html: The CV HTML content to display/edit
+        key_prefix: Unique prefix for Streamlit widget keys
+        on_save_callback: Function to call when HTML is saved, receives new HTML as argument
+        show_save_button: Whether to show the save button
+        show_open_browser: Whether to show the open in browser button
+        compact_mode_key: Session state key for compact mode (if None, creates local state)
+    
+    Returns:
+        The (potentially modified) HTML
+    """
+    if not html:
+        st.info("No CV content to display.")
+        return html
+    
+    # Initialize compact mode
+    if compact_mode_key and compact_mode_key not in st.session_state:
+        st.session_state[compact_mode_key] = "normal"
+    
+    current_html = html
+    
+    # Edit mode selector
+    col_mode, col_density = st.columns([1, 1])
+    
+    with col_mode:
+        edit_mode = st.radio(
+            "Edit Mode",
+            options=["preview", "quick_edit", "raw_html"],
+            format_func=lambda x: {"preview": "👁️ Preview", "quick_edit": "✏️ Quick Edit", "raw_html": "💻 Raw HTML"}[x],
+            key=f"{key_prefix}_edit_mode",
+            horizontal=True
+        )
+    
+    with col_density:
+        if compact_mode_key:
+            compact_mode = st.selectbox(
+                "Density",
+                options=["normal", "compact", "very_compact"],
+                format_func=lambda x: {"normal": "📄 Normal", "compact": "📑 Compact", "very_compact": "📃 Very Compact"}[x],
+                key=f"{key_prefix}_compact",
+                help="Reduce margins and font sizes to fit more content"
+            )
+            if compact_mode != st.session_state.get(compact_mode_key, "normal"):
+                st.session_state[compact_mode_key] = compact_mode
+        else:
+            compact_mode = "normal"
+    
+    # Render based on mode
+    if edit_mode == "preview":
+        # Preview with styling
+        preview_html = current_html
+        
+        if compact_mode != "normal":
+            compact_css = get_compact_mode_css(compact_mode)
+            if '</head>' in preview_html:
+                preview_html = preview_html.replace('</head>', compact_css + '</head>')
+            elif '</body>' in preview_html:
+                preview_html = preview_html.replace('</body>', compact_css + '</body>')
+        
+        page_preview_css = get_paginated_preview_css()
+        if '</head>' in preview_html:
+            preview_html = preview_html.replace('</head>', page_preview_css + '</head>')
+        elif '</body>' in preview_html:
+            preview_html = preview_html.replace('</body>', page_preview_css + '</body>')
+        
+        st.components.v1.html(preview_html, height=700, scrolling=True)
+        st.caption("📄 Preview shows approximate page layout. Use 'Open in Browser' for accurate print preview.")
+    
+    elif edit_mode == "quick_edit":
+        st.markdown("#### ✏️ Quick Edit")
+        st.caption("Edit Summary and Experience bullet points directly")
+        
+        # Summary section
+        with st.expander("📝 Professional Summary", expanded=True):
+            current_summary = extract_summary_from_html(current_html)
+            new_summary = st.text_area(
+                "Summary",
+                value=current_summary,
+                height=100,
+                key=f"{key_prefix}_summary_edit",
+                label_visibility="collapsed"
+            )
+            if new_summary != current_summary:
+                if st.button("Update Summary", key=f"{key_prefix}_update_summary"):
+                    current_html = update_summary_in_html(current_html, new_summary)
+                    if on_save_callback:
+                        on_save_callback(current_html)
+                    st.toast("✅ Summary updated!")
+                    st.rerun()
+        
+        # Experience sections
+        experiences = extract_experiences_from_html(current_html)
+        
+        if experiences:
+            st.markdown("##### 💼 Experiences")
+            for exp in experiences:
+                with st.expander(f"**{exp['title']}** at {exp['company']}" if exp['company'] else exp['title']):
+                    bullets_text = '\n'.join(exp['bullets'])
+                    new_bullets_text = st.text_area(
+                        "Bullet points (one per line)",
+                        value=bullets_text,
+                        height=150,
+                        key=f"{key_prefix}_exp_{exp['index']}_bullets",
+                        label_visibility="collapsed"
+                    )
+                    
+                    if new_bullets_text != bullets_text:
+                        if st.button("Update Bullets", key=f"{key_prefix}_update_exp_{exp['index']}"):
+                            new_bullets = [b.strip() for b in new_bullets_text.split('\n') if b.strip()]
+                            current_html = update_experience_bullets_in_html(current_html, exp['index'], new_bullets)
+                            if on_save_callback:
+                                on_save_callback(current_html)
+                            st.toast(f"✅ Updated {exp['title']}!")
+                            st.rerun()
+        else:
+            st.caption("No experience entries detected. Use Raw HTML mode to edit.")
+        
+        # Show preview below quick edit
+        st.divider()
+        st.markdown("##### Preview")
+        preview_html = current_html
+        if compact_mode != "normal":
+            compact_css = get_compact_mode_css(compact_mode)
+            if '</head>' in preview_html:
+                preview_html = preview_html.replace('</head>', compact_css + '</head>')
+        st.components.v1.html(preview_html, height=400, scrolling=True)
+    
+    elif edit_mode == "raw_html":
+        edited_html = st.text_area(
+            "Edit CV HTML",
+            value=current_html,
+            height=500,
+            key=f"{key_prefix}_raw_html"
+        )
+        
+        if edited_html != current_html:
+            if st.button("Apply HTML Changes", key=f"{key_prefix}_apply_html", type="primary"):
+                current_html = edited_html
+                if on_save_callback:
+                    on_save_callback(current_html)
+                st.toast("✅ HTML changes applied!")
+                st.rerun()
+    
+    # Action buttons
+    st.divider()
+    
+    action_cols = st.columns(3 if show_save_button else 2)
+    col_idx = 0
+    
+    if show_open_browser:
+        with action_cols[col_idx]:
+            if st.button("🌐 Open in Browser", use_container_width=True, key=f"{key_prefix}_open_browser"):
+                final_html = current_html
+                if compact_mode != "normal":
+                    compact_css = get_compact_mode_css(compact_mode)
+                    if '</head>' in final_html:
+                        final_html = final_html.replace('</head>', compact_css + '</head>')
+                open_cv_in_browser(final_html)
+                st.info("Opened! Use browser's Print → Save as PDF")
+        col_idx += 1
+    
+    return current_html
+
+
+# =============================================================================
 # SIDEBAR
 # =============================================================================
 
@@ -1177,77 +1442,28 @@ with tab3:
             if st.session_state.get("current_draft_id"):
                 st.caption("💾 *Draft auto-saved* — use 'Save Application' to finalize")
             
-            # Display options row
-            col_edit, col_compact = st.columns([1, 1])
-            with col_edit:
-                edit_cv_mode = st.toggle("Edit HTML", value=False, key="edit_cv_toggle")
-            with col_compact:
-                compact_mode = st.selectbox(
-                    "Density",
-                    options=["normal", "compact", "very_compact"],
-                    format_func=lambda x: {"normal": "📄 Normal", "compact": "📑 Compact", "very_compact": "📃 Very Compact"}[x],
-                    key="cv_compact_select",
-                    help="Reduce margins and font sizes to fit more content"
-                )
-                if compact_mode != st.session_state.cv_compact_mode:
-                    st.session_state.cv_compact_mode = compact_mode
+            # Callback to save changes to session state
+            def save_cv_changes(new_html):
+                st.session_state.current_cv_html = new_html
+                # Also update the draft
+                draft_id = st.session_state.get("current_draft_id")
+                if draft_id:
+                    update_application(draft_id, {"generated_html": new_html})
             
-            if edit_cv_mode:
-                edited_cv = st.text_area(
-                    "Edit CV HTML",
-                    value=st.session_state.current_cv_html,
-                    height=400
-                )
-                if st.button("Apply Changes", key="apply_cv_changes"):
-                    st.session_state.current_cv_html = edited_cv
-                    st.success("Changes applied!")
-                    st.rerun()
-            else:
-                # Preview with compact mode and page simulation
-                preview_html = st.session_state.current_cv_html
-                
-                # Inject compact mode CSS if not normal
-                if st.session_state.cv_compact_mode != "normal":
-                    compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
-                    if '</head>' in preview_html:
-                        preview_html = preview_html.replace('</head>', compact_css + '</head>')
-                    elif '</body>' in preview_html:
-                        preview_html = preview_html.replace('</body>', compact_css + '</body>')
-                
-                # Add page preview styling
-                page_preview_css = get_paginated_preview_css()
-                if '</head>' in preview_html:
-                    preview_html = preview_html.replace('</head>', page_preview_css + '</head>')
-                elif '</body>' in preview_html:
-                    preview_html = preview_html.replace('</body>', page_preview_css + '</body>')
-                
-                # Show preview
-                st.components.v1.html(
-                    preview_html,
-                    height=700,
-                    scrolling=True
-                )
-                st.caption("📄 Preview shows approximate page layout. Use 'Open in Browser' for accurate print preview.")
+            # Render the unified CV editor
+            render_cv_editor(
+                html=st.session_state.current_cv_html,
+                key_prefix="cv_gen",
+                on_save_callback=save_cv_changes,
+                show_save_button=False,
+                compact_mode_key="cv_compact_mode"
+            )
             
-            # Action buttons
-            st.divider()
-            col_a, col_b, col_c = st.columns(3)
+            # Additional action buttons specific to generator
+            col_save, col_regen = st.columns(2)
             
-            with col_a:
-                if st.button("🌐 Open in Browser", use_container_width=True, key="cv_open_browser"):
-                    # Apply compact mode when opening in browser too
-                    final_html = st.session_state.current_cv_html
-                    if st.session_state.cv_compact_mode != "normal":
-                        compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
-                        if '</head>' in final_html:
-                            final_html = final_html.replace('</head>', compact_css + '</head>')
-                        elif '</body>' in final_html:
-                            final_html = final_html.replace('</body>', compact_css + '</body>')
-                    filepath = open_cv_in_browser(final_html)
-                    st.info(f"Opened! Use browser's Print → Save as PDF")
-            
-            with col_b:
-                if st.button("💾 Save Application", use_container_width=True, key="cv_save_app"):
+            with col_save:
+                if st.button("💾 Save Application", use_container_width=True, key="cv_save_app", type="primary"):
                     # Save with compact mode applied
                     final_html = st.session_state.current_cv_html
                     if st.session_state.cv_compact_mode != "normal":
@@ -1257,32 +1473,28 @@ with tab3:
                         elif '</body>' in final_html:
                             final_html = final_html.replace('</body>', compact_css + '</body>')
                     
-                    # Promote draft to saved application (or update existing draft)
+                    # Promote draft to saved application
                     draft_id = st.session_state.get("current_draft_id")
                     if draft_id:
-                        # Update draft with final HTML and change status to "created"
                         update_application(draft_id, {
                             "generated_html": final_html,
                             "status": "created"
                         })
-                        app_id = draft_id
-                        st.session_state.current_draft_id = None  # Clear draft reference
+                        st.session_state.current_draft_id = None
                     else:
-                        # No draft exists, create new application
-                        app_id = save_application(
+                        save_application(
                             company=st.session_state.get("cv_job_company", "Unknown"),
                             role=st.session_state.get("cv_job_role", "Unknown"),
                             job_description=st.session_state.get("cv_job_description", ""),
                             generated_html=final_html,
                             template_id=st.session_state.get("cv_template_id", "")
                         )
-                    st.success(f"Application saved!")
+                    st.success("Application saved!")
             
-            with col_c:
+            with col_regen:
                 if st.button("🔄 Regenerate", use_container_width=True, key="cv_regenerate"):
                     st.session_state.current_cv_html = ""
                     st.session_state.cv_compact_mode = "normal"
-                    # Keep draft ID so regeneration updates the same draft
                     st.rerun()
         else:
             st.info("Fill in the job details and click 'Generate CV' to create your tailored CV.")
@@ -1376,42 +1588,22 @@ with tab4:
                 with col2:
                     st.markdown("**Generated CV:**")
                     if app.get("generated_html"):
-                        # Edit toggle
-                        edit_mode = st.toggle("Edit HTML", value=False, key=f"edit_html_{app['id']}")
+                        # Create a callback to save changes for this specific application
+                        app_id = app['id']
                         
-                        if edit_mode:
-                            edited_html = st.text_area(
-                                "Edit CV HTML",
-                                value=app["generated_html"],
-                                height=300,
-                                key=f"html_editor_{app['id']}"
-                            )
-                            col_save, col_cancel = st.columns(2)
-                            with col_save:
-                                if st.button("💾 Save HTML", key=f"save_html_{app['id']}", type="primary"):
-                                    update_application(app["id"], {"generated_html": edited_html})
-                                    st.toast("✅ HTML saved!")
-                                    st.rerun()
-                            with col_cancel:
-                                if st.button("🌐 Open in Browser", key=f"open_edit_{app['id']}"):
-                                    filepath = open_cv_in_browser(
-                                        edited_html,
-                                        f"cv_{app['company']}_{app['id']}.html"
-                                    )
-                                    st.info("Opened in browser!")
-                        else:
-                            st.components.v1.html(
-                                app["generated_html"],
-                                height=300,
-                                scrolling=True
-                            )
-                            
-                            if st.button("🌐 Open in Browser", key=f"open_{app['id']}"):
-                                filepath = open_cv_in_browser(
-                                    app["generated_html"],
-                                    f"cv_{app['company']}_{app['id']}.html"
-                                )
-                                st.info("Opened in browser!")
+                        def make_save_callback(aid):
+                            def save_callback(new_html):
+                                update_application(aid, {"generated_html": new_html})
+                            return save_callback
+                        
+                        # Render the unified CV editor
+                        render_cv_editor(
+                            html=app["generated_html"],
+                            key_prefix=f"app_{app['id']}",
+                            on_save_callback=make_save_callback(app_id),
+                            show_save_button=False,
+                            compact_mode_key=None  # No global compact mode for history items
+                        )
                 
                 # Bullet points for copy-pasting
                 if app.get("generated_html"):
