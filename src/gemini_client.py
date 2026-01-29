@@ -213,10 +213,34 @@ Your writing style:
 Format requirements:
 - Output clean, semantic HTML only (no markdown)
 - Use proper heading hierarchy (h1, h2, h3)
-- Use <section> tags for major sections
+- Use <section> tags for major sections with id attributes
 - Use <ul> and <li> for bullet points
 - No tables for layout
-- Include appropriate CSS classes for styling
+
+MANDATORY HTML STRUCTURE (must follow exactly for editing compatibility):
+
+1. Summary section:
+   <section id="summary">
+     <h2>...</h2>
+     <p class="summary">Summary text here</p>
+   </section>
+
+2. Each work experience entry:
+   <article class="entry" data-type="experience">
+     <div class="entry-header">
+       <span class="entry-title">Role/Title</span>
+       <span class="entry-date">Date Range</span>
+     </div>
+     <div class="entry-header">
+       <span class="entry-subtitle">Company Name</span>
+       <span class="entry-location">Location</span>
+     </div>
+     <ul>
+       <li>Bullet point</li>
+     </ul>
+   </article>
+
+3. Education entries use same structure with data-type="education"
 
 Content ordering rules:
 - Experience MUST be ordered from newest/latest to oldest (reverse chronological)
