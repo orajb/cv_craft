@@ -1,11 +1,17 @@
 # 🎯 CV Crafter
 
-**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance with user's own API. All data is stored locally. This is a spec driven development project. 
+**AI-Powered CV Generator** — A local tool for creating machine-readable, ATS-friendly CVs with Gemini and Claude AI assistance using your own API key. All data is stored locally. This is a spec-driven development project.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-red)
 ![Gemini](https://img.shields.io/badge/Gemini-API-yellow)
 ![Claude](https://img.shields.io/badge/Claude-API-purple)
+
+---
+
+## 📸 Screenshot
+
+![CV Crafter Screenshot](assets/screenshot.png)
 
 ---
 
@@ -15,8 +21,14 @@
   - Full CRUD: Add, Edit, Delete for all entry types
   - Toast notifications for instant feedback
 - **🎨 Template Editor** — Create and customize CV templates with AI assistance
+  - 3 built-in templates: Classic Professional, Modern Clean, Career Progression
 - **✨ CV Generator** — Paste a job description and let AI create a tailored CV
+  - **Quick Edit Mode** — Edit summary and experience bullets directly without touching HTML
+  - Density options (Normal/Compact/Very Compact)
+  - 1-page limit toggle
 - **📚 Application History** — Track all your applications with their generated CVs
+  - Edit saved CVs with Quick Edit or Raw HTML
+  - Extract bullet points as plain text for application forms
 - **🤖 Multi-AI Support** — Works with both Google Gemini and Anthropic Claude
 - **🔒 Local-First** — All data stored locally, API key never saved to disk
 - **🚀 One-Command Setup** — Download, run, done!
@@ -169,26 +181,26 @@ data/
 ```
 CV Crafter/
 ├── app.py                    # Main Streamlit application
+├── start.py                  # Cross-platform Python launcher
 ├── run.sh                    # One-command launcher (macOS/Linux)
 ├── run.bat                   # One-command launcher (Windows)
 ├── requirements.txt          # Python dependencies
 ├── README.md                 # This file
 ├── .gitignore               # Git ignore rules
+├── assets/                  # Screenshots and images
 ├── data/                    # User data (JSON files)
-├── src/
-│   ├── __init__.py
-│   ├── data_manager.py      # CRUD operations for JSON storage
-│   ├── gemini_client.py     # Gemini API client with fallback
-│   └── cv_generator.py      # HTML generation utilities
-├── templates/               # (Reserved for future use)
-└── styles/                  # (Reserved for future use)
+└── src/
+    ├── __init__.py
+    ├── data_manager.py      # CRUD operations for JSON storage
+    ├── ai_client.py         # AI client (Gemini + Claude support)
+    └── cv_generator.py      # HTML generation utilities
 ```
 
 ### Adding New Features
 
 The codebase is modular:
 - **Data operations** → `src/data_manager.py`
-- **AI integration** → `src/gemini_client.py`
+- **AI integration** → `src/ai_client.py`
 - **HTML/CV logic** → `src/cv_generator.py`
 - **UI/UX** → `app.py`
 
