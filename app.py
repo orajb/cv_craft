@@ -23,8 +23,8 @@ from data_manager import (
     load_applications, save_application, update_application, delete_application,
     get_application, save_or_update_draft
 )
-from gemini_client import (
-    GeminiClient, AIClient, create_cv_prompt, create_template_prompt,
+from ai_client import (
+    AIClient, create_cv_prompt, create_template_prompt,
     SYSTEM_INSTRUCTION_CV, SYSTEM_INSTRUCTION_TEMPLATE, detect_api_provider
 )
 from cv_generator import (

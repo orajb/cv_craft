@@ -193,10 +193,6 @@ class AIClient:
             return False, f"Connection failed: {str(e)}"
 
 
-# Backwards compatibility alias
-GeminiClient = AIClient
-
-
 # =============================================================================
 # PROMPT TEMPLATES
 # =============================================================================
