@@ -11,7 +11,7 @@
 
 ## 📸 Screenshot
 
-![CV Crafter Screenshot](assets/screenshot.png)
+![CV Crafter Screenshot](assets/screenshot2.png)
 
 ---
 
