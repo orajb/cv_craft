@@ -34,6 +34,8 @@ from cv_generator import (
     save_cv_html, extract_html_from_response,
     get_compact_mode_css, get_paginated_preview_css
 )
+from analytics import get_stats_summary
+from icons import get_icon, icon_with_text
 
 # =============================================================================
 # PAGE CONFIG
@@ -166,6 +168,33 @@ st.markdown("""
         max-height: 600px;
         overflow-y: auto;
     }
+    
+    /* Icon styling */
+    .icon-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .icon-header svg {
+        color: var(--accent);
+        flex-shrink: 0;
+    }
+    
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .section-title svg {
+        color: var(--accent);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -215,6 +244,19 @@ def init_session_state():
         st.session_state.cv_compact_mode = "normal"
 
 init_session_state()
+
+# =============================================================================
+# ICON HELPERS
+# =============================================================================
+
+def section_header(icon_name: str, title: str, size: int = 24):
+    """Render a section header with an icon."""
+    icon_svg = get_icon(icon_name, size=size, color="#00d4aa")
+    st.markdown(f'<div class="section-title">{icon_svg} {title}</div>', unsafe_allow_html=True)
+
+def icon_text(icon_name: str, text: str, size: int = 16):
+    """Render inline icon with text."""
+    return icon_with_text(icon_name, text, size=size)
 
 # =============================================================================
 # REUSABLE CV EDITOR COMPONENT
@@ -659,7 +701,7 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
         st.caption("Edit Summary and Experience bullet points directly")
         
         # Summary section
-        with st.expander("📝 Professional Summary", expanded=True):
+        with st.expander("Professional Summary", expanded=True):
             current_summary = extract_summary_from_html(current_html)
             new_summary = st.text_area(
                 "Summary",
@@ -737,7 +779,7 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
     
     if show_open_browser:
         with action_cols[col_idx]:
-            if st.button("🌐 Open in Browser", use_container_width=True, key=f"{key_prefix}_open_browser"):
+            if st.button("Open in Browser", use_container_width=True, key=f"{key_prefix}_open_browser"):
                 final_html = current_html
                 if compact_mode != "normal":
                     compact_css = get_compact_mode_css(compact_mode)
@@ -756,13 +798,20 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
 # =============================================================================
 
 with st.sidebar:
-    st.title("🎯 CV Crafter")
+    # App title with icon
+    st.markdown(f'''<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+        {get_icon("target", size=28, color="#00d4aa")}
+        <span style="font-size: 1.5rem; font-weight: 700;">CV Crafter</span>
+    </div>''', unsafe_allow_html=True)
     st.caption("AI-Powered CV Generator")
     
     st.divider()
     
     # API Key input
-    st.subheader("🔑 AI API Key")
+    st.markdown(f'''<div class="icon-header" style="margin-top: 0.5rem;">
+        {get_icon("cpu", size=18, color="#00d4aa")}
+        <span style="font-weight: 600;">AI API Key</span>
+    </div>''', unsafe_allow_html=True)
     api_key = st.text_input(
         "Enter your Gemini or Claude API key",
         type="password",
@@ -794,7 +843,10 @@ with st.sidebar:
     st.divider()
     
     # Quick stats
-    st.subheader("📊 Your Data")
+    st.markdown(f'''<div class="icon-header">
+        {get_icon("bar-chart", size=18, color="#00d4aa")}
+        <span style="font-weight: 600;">Your Data</span>
+    </div>''', unsafe_allow_html=True)
     experiences = load_experiences()
     templates = load_templates()
     applications = load_applications()
@@ -809,11 +861,31 @@ with st.sidebar:
     
     st.divider()
     
-    # Model info
-    st.subheader("🤖 Models")
-    st.caption("**Pro Tasks**: gemini-3-pro-preview")
-    st.caption("**Fast Tasks**: gemini-2.0-flash")
-    st.caption("Fallback: gemini-2.5-pro")
+    # Model info - Dynamic based on provider
+    st.markdown(f'''<div class="icon-header">
+        {get_icon("zap", size=18, color="#00d4aa")}
+        <span style="font-weight: 600;">AI Models</span>
+    </div>''', unsafe_allow_html=True)
+    if api_key:
+        provider = detect_api_provider(api_key)
+        if provider == "claude":
+            st.markdown("""
+            <div style="background: #1a1f2e; border: 1px solid #2d3548; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem;">
+                <span style="color: #00d4aa; font-weight: 600;">Claude</span>
+                <div style="font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem;">Pro: claude-sonnet-4</div>
+                <div style="font-size: 0.8rem; color: #a0a0a0;">Fast: claude-3-5-haiku</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div style="background: #1a1f2e; border: 1px solid #2d3548; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem;">
+                <span style="color: #00d4aa; font-weight: 600;">Gemini</span>
+                <div style="font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem;">Pro: gemini-3-pro-preview</div>
+                <div style="font-size: 0.8rem; color: #a0a0a0;">Fast: gemini-2.0-flash</div>
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.caption("Connect an API key to see models")
 
 # =============================================================================
 # MAIN CONTENT - TABS
@@ -831,13 +903,13 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # =============================================================================
 
 with tab1:
-    st.header("Experience Bank")
+    section_header("briefcase", "Experience Bank")
     st.caption("Store all your experiences, skills, and achievements here. The AI will select the most relevant ones for each application.")
     
     experiences = load_experiences()
     
     # Contact Information
-    with st.expander("👤 Contact Information", expanded=True):
+    with st.expander("Contact Information", expanded=True):
         contact = experiences.get("contact", {})
         
         col1, col2 = st.columns(2)
@@ -872,7 +944,7 @@ with tab1:
             st.rerun()
     
     # Professional Summary
-    with st.expander("📋 Professional Summary"):
+    with st.expander("Professional Summary"):
         summary = st.text_area(
             "Your professional summary (can be tailored by AI for each application)",
             value=experiences.get("summary", ""),
@@ -884,7 +956,7 @@ with tab1:
             st.rerun()
     
     # Work Experience
-    with st.expander("💼 Work Experience", expanded=True):
+    with st.expander("Work Experience", expanded=True):
         work_exps = experiences.get("work_experiences", [])
         
         # Check if we're editing an existing experience
@@ -983,12 +1055,12 @@ with tab1:
                 
                 col1, col2, col3 = st.columns([1, 1, 4])
                 with col1:
-                    if st.button("✏️ Edit", key=f"edit_exp_{exp['id']}"):
+                    if st.button("Edit", key=f"edit_exp_{exp['id']}"):
                         st.session_state.editing_exp_id = exp["id"]
                         st.session_state.work_exp_form_key += 1  # Reset form to load new values
                         st.rerun()
                 with col2:
-                    if st.button("🗑️ Delete", key=f"del_exp_{exp['id']}"):
+                    if st.button("Delete", key=f"del_exp_{exp['id']}"):
                         delete_work_experience(exp['id'])
                         if st.session_state.editing_exp_id == exp["id"]:
                             st.session_state.editing_exp_id = None
@@ -997,7 +1069,7 @@ with tab1:
                 st.divider()
     
     # Education
-    with st.expander("🎓 Education"):
+    with st.expander("Education"):
         edu_list = experiences.get("education", [])
         
         # Check if editing
@@ -1071,12 +1143,12 @@ with tab1:
             
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:
-                if st.button("✏️ Edit", key=f"edit_edu_{edu['id']}"):
+                if st.button("Edit", key=f"edit_edu_{edu['id']}"):
                     st.session_state.editing_edu_id = edu["id"]
                     st.session_state.edu_form_key += 1
                     st.rerun()
             with col2:
-                if st.button("🗑️ Delete", key=f"del_edu_{edu['id']}"):
+                if st.button("Delete", key=f"del_edu_{edu['id']}"):
                     delete_education(edu['id'])
                     if st.session_state.editing_edu_id == edu["id"]:
                         st.session_state.editing_edu_id = None
@@ -1084,7 +1156,7 @@ with tab1:
             st.divider()
     
     # Skills
-    with st.expander("🛠️ Skills"):
+    with st.expander("Skills"):
         skills = experiences.get("skills", {})
         
         col1, col2 = st.columns(2)
@@ -1122,7 +1194,7 @@ with tab1:
             st.rerun()
     
     # Projects
-    with st.expander("🚀 Projects"):
+    with st.expander("Projects"):
         projects = experiences.get("projects", [])
         
         # Check if editing
@@ -1188,12 +1260,12 @@ with tab1:
             
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:
-                if st.button("✏️ Edit", key=f"edit_proj_{proj['id']}"):
+                if st.button("Edit", key=f"edit_proj_{proj['id']}"):
                     st.session_state.editing_proj_id = proj["id"]
                     st.session_state.proj_form_key += 1
                     st.rerun()
             with col2:
-                if st.button("🗑️ Delete", key=f"del_proj_{proj['id']}"):
+                if st.button("Delete", key=f"del_proj_{proj['id']}"):
                     delete_project(proj['id'])
                     if st.session_state.editing_proj_id == proj["id"]:
                         st.session_state.editing_proj_id = None
@@ -1201,7 +1273,7 @@ with tab1:
             st.divider()
     
     # Certifications
-    with st.expander("📜 Certifications"):
+    with st.expander("Certifications"):
         certs = experiences.get("certifications", [])
         
         # Check if editing
@@ -1260,19 +1332,19 @@ with tab1:
             
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:
-                if st.button("✏️ Edit", key=f"edit_cert_{cert['id']}"):
+                if st.button("Edit", key=f"edit_cert_{cert['id']}"):
                     st.session_state.editing_cert_id = cert["id"]
                     st.session_state.cert_form_key += 1
                     st.rerun()
             with col2:
-                if st.button("🗑️ Delete", key=f"del_cert_{cert['id']}"):
+                if st.button("Delete", key=f"del_cert_{cert['id']}"):
                     delete_certification(cert['id'])
                     if st.session_state.editing_cert_id == cert["id"]:
                         st.session_state.editing_cert_id = None
                     st.rerun()
     
     # Awards
-    with st.expander("🏆 Awards & Honors"):
+    with st.expander("Awards & Honors"):
         awards = experiences.get("awards", [])
         
         # Check if editing
@@ -1354,12 +1426,12 @@ with tab1:
             
             col1, col2, col3 = st.columns([1, 1, 4])
             with col1:
-                if st.button("✏️ Edit", key=f"edit_award_{award['id']}"):
+                if st.button("Edit", key=f"edit_award_{award['id']}"):
                     st.session_state.editing_award_id = award["id"]
                     st.session_state.award_form_key += 1
                     st.rerun()
             with col2:
-                if st.button("🗑️ Delete", key=f"del_award_{award['id']}"):
+                if st.button("Delete", key=f"del_award_{award['id']}"):
                     delete_award(award['id'])
                     if st.session_state.editing_award_id == award["id"]:
                         st.session_state.editing_award_id = None
@@ -1370,7 +1442,7 @@ with tab1:
 # =============================================================================
 
 with tab2:
-    st.header("Template Editor")
+    section_header("palette", "Template Editor")
     st.caption("Create and manage CV templates. Use AI to generate new templates or edit existing ones.")
     
     templates_data = load_templates()
@@ -1532,7 +1604,7 @@ with tab2:
             
             with col_actions:
                 if not st.session_state.get("editing_template_name"):
-                    if st.button("✏️ Rename", use_container_width=True, key="template_rename"):
+                    if st.button("Rename", use_container_width=True, key="template_rename"):
                         st.session_state.editing_template_name = selected_template["id"]
                         st.rerun()
             
@@ -1547,7 +1619,7 @@ with tab2:
                 else:
                     st.caption("✓ Default template")
             with col_delete:
-                if st.button("🗑️ Delete Template", use_container_width=True, key="template_delete"):
+                if st.button("Delete Template", use_container_width=True, key="template_delete"):
                     st.session_state.confirm_delete_template = selected_template["id"]
                     st.rerun()
             
@@ -1579,7 +1651,7 @@ with tab2:
                     height=400
                 )
                 
-                if st.button("💾 Save HTML Changes", use_container_width=True, type="primary", key="template_save_html"):
+                if st.button("Save HTML Changes", use_container_width=True, type="primary", key="template_save_html"):
                     update_template(selected_template["id"], {"html": edited_html})
                     st.toast("✅ Template HTML saved!", icon="💾")
                     st.rerun()
@@ -1593,7 +1665,7 @@ with tab2:
                 
                 st.components.v1.html(preview_html, height=600, scrolling=True)
                 
-                if st.button("🌐 Open in Browser", use_container_width=True, key="template_open_browser"):
+                if st.button("Open in Browser", use_container_width=True, key="template_open_browser"):
                     filepath = open_cv_in_browser(preview_html, f"template_preview_{selected_id}.html")
                     st.info(f"Opened in browser. File saved at: {filepath}")
         else:
@@ -1604,7 +1676,7 @@ with tab2:
 # =============================================================================
 
 with tab3:
-    st.header("CV Generator")
+    section_header("sparkles", "CV Generator")
     st.caption("Paste a job description, add any specific instructions, and let AI create a tailored CV.")
     
     if not st.session_state.api_key:
@@ -1656,7 +1728,7 @@ with tab3:
         # Generate button
         st.divider()
         
-        if st.button("🚀 Generate CV", use_container_width=True, type="primary", disabled=not st.session_state.api_key, key="generate_cv_btn"):
+        if st.button("Generate CV", use_container_width=True, type="primary", disabled=not st.session_state.api_key, key="generate_cv_btn"):
             if job_description and selected_template_id:
                 with st.spinner("AI is crafting your CV..."):
                     try:
@@ -1733,7 +1805,7 @@ with tab3:
             col_save, col_regen = st.columns(2)
             
             with col_save:
-                if st.button("💾 Save Application", use_container_width=True, key="cv_save_app", type="primary"):
+                if st.button("Save Application", use_container_width=True, key="cv_save_app", type="primary"):
                     # Save with compact mode applied
                     final_html = st.session_state.current_cv_html
                     if st.session_state.cv_compact_mode != "normal":
@@ -1792,10 +1864,73 @@ with tab3:
 # =============================================================================
 
 with tab4:
-    st.header("Application History")
+    section_header("folder", "Applications & CVs")
     st.caption("Track all your job applications and their generated CVs.")
     
     applications = load_applications()
+    
+    # Stats Header
+    stats = get_stats_summary()
+    if stats["total"] > 0:
+        st.markdown("""
+        <style>
+            .stats-header {
+                display: flex;
+                gap: 1rem;
+                margin-bottom: 1rem;
+                flex-wrap: wrap;
+            }
+            .stat-card {
+                background: linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%);
+                border: 1px solid #2d3548;
+                border-radius: 12px;
+                padding: 1rem 1.5rem;
+                min-width: 120px;
+                text-align: center;
+            }
+            .stat-value {
+                font-size: 2rem;
+                font-weight: 700;
+                color: #00d4aa;
+                line-height: 1;
+            }
+            .stat-label {
+                font-size: 0.75rem;
+                color: #a0a0a0;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin-top: 0.25rem;
+            }
+            .stat-card.highlight {
+                border-color: #00d4aa;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="stats-header">
+            <div class="stat-card">
+                <div class="stat-value">{stats['total']}</div>
+                <div class="stat-label">Total CVs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{stats['applied']}</div>
+                <div class="stat-label">Applied</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{stats['interviewing']}</div>
+                <div class="stat-label">Interviewing</div>
+            </div>
+            <div class="stat-card highlight">
+                <div class="stat-value">{stats['offers']}</div>
+                <div class="stat-label">Offers</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{stats['success_rate']}%</div>
+                <div class="stat-label">Success Rate</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     if not applications:
         st.info("No applications yet. Generate a CV and save it to start tracking!")
@@ -1877,7 +2012,7 @@ with tab4:
                 
                 # Bullet points for copy-pasting
                 if app.get("generated_html"):
-                    with st.expander("📋 Copy Bullet Points (plain text)"):
+                    with st.expander("Copy Bullet Points (plain text)"):
                         # Extract structured experiences
                         extracted_exps = extract_experiences_from_html(app["generated_html"])
                         
@@ -1924,7 +2059,7 @@ with tab4:
                         st.success("Notes saved!")
                 
                 with col_b:
-                    if st.button("🗑️ Delete Application", key=f"delete_app_{app['id']}"):
+                    if st.button("Delete Application", key=f"delete_app_{app['id']}"):
                         delete_application(app["id"])
                         st.success("Application deleted!")
                         st.rerun()

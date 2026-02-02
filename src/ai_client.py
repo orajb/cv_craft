@@ -221,7 +221,9 @@ MANDATORY HTML STRUCTURE (must follow exactly for editing compatibility):
      <p class="summary">Summary text here</p>
    </section>
 
-2. Each work experience entry:
+2. Each work experience entry MUST use one of these formats:
+   
+   Standard format (use class="entry"):
    <article class="entry" data-type="experience">
      <div class="entry-header">
        <span class="entry-title">Role/Title</span>
@@ -236,7 +238,27 @@ MANDATORY HTML STRUCTURE (must follow exactly for editing compatibility):
      </ul>
    </article>
 
+   Grouped format (for multiple roles at same company, use class="role-entry"):
+   <div class="company-group">
+     <div class="company-header">
+       <span class="company-name">Company Name</span>
+       <span class="company-tenure">Overall Dates</span>
+     </div>
+     <div class="role-entry">
+       <div class="role-header">
+         <span class="role-title">Role Title</span>
+         <span class="role-date">Date Range</span>
+       </div>
+       <ul><li>Bullet</li></ul>
+     </div>
+   </div>
+
 3. Education entries use same structure with data-type="education"
+
+CRITICAL CSS CLASSES (for print page-break handling):
+- Use class="entry" for standalone experience items
+- Use class="role-entry" for roles within a company group
+- These classes MUST be present for proper PDF pagination
 
 Content ordering rules:
 - Experience MUST be ordered from newest/latest to oldest (reverse chronological)

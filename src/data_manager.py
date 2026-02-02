@@ -447,13 +447,14 @@ def load_applications() -> list:
 
 
 def save_application(
-    company: str,
-    role: str,
-    job_description: str,
-    generated_html: str,
-    template_id: str,
+    company: str = "Untitled Focus",
+    role: str = "General",
+    job_description: str = "",
+    generated_html: str = "",
+    template_id: str = "",
     notes: str = "",
-    status: str = "created"
+    status: str = "created",
+    role_url: str = ""
 ) -> str:
     """Save an application entry. Returns the ID."""
     data = _load_json(APPLICATIONS_FILE)
@@ -464,13 +465,14 @@ def save_application(
     
     application = {
         "id": app_id,
-        "company": company,
-        "role": role,
+        "company": company or "Untitled Focus",
+        "role": role or "General",
         "job_description": job_description,
         "generated_html": generated_html,
         "template_id": template_id,
         "notes": notes,
         "status": status,
+        "role_url": role_url,
         "created_at": datetime.now().isoformat()
     }
     
@@ -480,12 +482,13 @@ def save_application(
 
 
 def save_or_update_draft(
-    company: str,
-    role: str,
-    job_description: str,
-    generated_html: str,
-    template_id: str,
-    existing_draft_id: str = None
+    company: str = "Untitled Focus",
+    role: str = "General",
+    job_description: str = "",
+    generated_html: str = "",
+    template_id: str = "",
+    existing_draft_id: str = None,
+    role_url: str = ""
 ) -> str:
     """Save a new draft or update existing draft. Returns the draft ID."""
     data = _load_json(APPLICATIONS_FILE)
@@ -496,11 +499,12 @@ def save_or_update_draft(
     if existing_draft_id:
         for app in data.get("applications", []):
             if app["id"] == existing_draft_id and app.get("status") == "draft":
-                app["company"] = company
-                app["role"] = role
+                app["company"] = company or "Untitled Focus"
+                app["role"] = role or "General"
                 app["job_description"] = job_description
                 app["generated_html"] = generated_html
                 app["template_id"] = template_id
+                app["role_url"] = role_url
                 app["updated_at"] = datetime.now().isoformat()
                 _save_json(APPLICATIONS_FILE, data)
                 return existing_draft_id
@@ -512,7 +516,8 @@ def save_or_update_draft(
         job_description=job_description,
         generated_html=generated_html,
         template_id=template_id,
-        status="draft"
+        status="draft",
+        role_url=role_url
     )
 
 
