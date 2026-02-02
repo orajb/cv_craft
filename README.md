@@ -11,24 +11,21 @@
 
 ## 📸 Screenshot
 
-![CV Crafter Screenshot](assets/screenshot2.png)
+![CV Crafter Screenshot](assets/screenshot3.png)
 
 ---
 
 ## ✨ Features
 
-- **✨ Generate HTML CV with Full CRUD** — Create tailored CVs from job descriptions and save them as PDF
-  - **Save for PDF** — Generate ATS-friendly HTML that is perfectly optimized for browser "Print to PDF"
-  - **Full Control** — Use Quick Edit Mode to tweak bullets or access logic if needed
-  - **Density Options** — Choose Normal, Compact, or Very Compact layouts
+- **✨ Unified CV Management** — Create, view, edit, and track all your CVs in one central hub
+  - **Drawer-Based Editing** — Context-aware editing panel for CV creation and regeneration
+  - **Full-Width Previews** — View your CVs in high-fidelity right in the app
+  - **4 View Modes** — Preview, Quick Edit (Side-by-Side), HTML Edit, and Copy Bullets
 - **📝 Experience Bank** — Store all your work experiences, education, skills, and projects in one place
   - Full CRUD: Add, Edit, Delete for all entry types
   - Toast notifications for instant feedback
 - **🎨 Template Editor** — Create and customize CV templates with AI assistance
   - 3 built-in templates: Classic Professional, Modern Clean, Career Progression
-- **📚 Application History** — Track all your applications with their generated CVs
-  - Edit saved CVs anytime
-  - Extract bullet points as plain text for application forms
 - **🤖 Multi-AI Support** — Works with both Google Gemini and Anthropic Claude
 - **🔒 Local-First** — All data stored locally, API key never saved to disk
 - **🚀 One-Command Setup** — Download, run, done!
@@ -80,11 +77,11 @@ You need ONE of these (not both):
 
 ### First-Time Setup
 
-1. **Enter your Gemini API key** in the sidebar
-2. **Click "Test Connection"** to verify it works
-3. **Go to Experience Bank** and add your information
-4. **Create a template** in Template Editor (or use the default)
-5. **Generate your first CV!**
+1. **Click the ⚙️ Gear icon** in the top right
+2. **Enter your API key** in the Settings popup
+3. **Click "Test Connection"** to verify it works
+4. **Go to Experience Bank** and add your information
+5. **Go to CVs tab** and click **"+ New CV"** to create your first CV!
 
 ---
 
@@ -100,13 +97,21 @@ Store all your professional information:
 - **Projects** — Personal/professional projects with tech stack
 - **Certifications** — Professional certifications
 
-**Editing entries:**
-- Click ✏️ **Edit** on any item to load it into the form
-- Make your changes and click **Update**
-- Click **Cancel Edit** to discard changes
-- Toast notifications confirm all save/update actions
-
 > 💡 **Tip**: Add ALL your experiences here. The AI will select the most relevant ones for each job application.
+
+### Unified CVs Tab
+
+The heart of the application. Manage your CVs and applications in one place:
+
+- **Create New CV**: Click **"+ New CV"** to open the creation drawer.
+- **Drawer Editing**: Enter job details, select a template, and generate logic all in the side panel.
+- **View Modes**:
+  - **Preview**: Rendered CV as it will appear in PDF.
+  - **Quick Edit**: Side-by-side view with Preview on left and Bullet Point editor on right.
+  - **HTML Edit**: Full HTML source editor for fine-grained control.
+  - **Copy Bullets**: Extract just the bullet points for online application forms.
+- **Regenerate**: Update instructions and regenerate specific CVs without losing context.
+- **Track Status**: Update application status (Created, Applied, Interviewing, Offer).
 
 ### Template Editor
 
@@ -114,27 +119,6 @@ Create and manage CV templates:
 - **Generate with AI** — Describe your desired style and let Gemini create a template
 - **Edit HTML** — Directly modify the template code
 - **Preview** — See how the template looks with your data
-- **Set Default** — Choose which template to use by default
-
-### CV Generator
-
-Create tailored CVs:
-1. Enter the **company name** and **role**
-2. **Paste the job description**
-3. Add any **specific instructions** (optional)
-4. Select a **template**
-5. Click **Generate CV**
-6. **Preview** and **edit** if needed
-7. **Open in browser** and print to PDF
-8. **Save Application** to track it
-
-### Application History
-
-Track your job applications:
-- View all past applications with their CVs
-- Update application **status** (created, applied, interviewing, rejected, offer)
-- Add **notes** for each application
-- **Search** by company or role
 
 ---
 
@@ -142,7 +126,7 @@ Track your job applications:
 
 The app uses browser-based PDF export for maximum ATS compatibility:
 
-1. Click **"Open in Browser"**
+1. Click **"Open in Browser"** on any CV
 2. Press `Cmd+P` (Mac) or `Ctrl+P` (Windows)
 3. Select **"Save as PDF"**
 4. Adjust margins if needed (usually 0.5in works well)
@@ -183,26 +167,8 @@ CV Crafter/
 ├── app.py                    # Main Streamlit application
 ├── start.py                  # Cross-platform Python launcher
 ├── run.sh                    # One-command launcher (macOS/Linux)
-├── run.bat                   # One-command launcher (Windows)
-├── requirements.txt          # Python dependencies
-├── README.md                 # This file
-├── .gitignore               # Git ignore rules
-├── assets/                  # Screenshots and images
-├── data/                    # User data (JSON files)
-└── src/
-    ├── __init__.py
-    ├── data_manager.py      # CRUD operations for JSON storage
-    ├── ai_client.py         # AI client (Gemini + Claude support)
-    └── cv_generator.py      # HTML generation utilities
+...
 ```
-
-### Adding New Features
-
-The codebase is modular:
-- **Data operations** → `src/data_manager.py`
-- **AI integration** → `src/ai_client.py`
-- **HTML/CV logic** → `src/cv_generator.py`
-- **UI/UX** → `app.py`
 
 ---
 
@@ -225,14 +191,6 @@ The generated CVs are optimized for Applicant Tracking Systems:
 - Verify your API key is correct
 - Check your internet connection
 - Ensure the Gemini API is available in your region
-
-### "No templates found"
-- Go to Template Editor and click "Create Default Template"
-
-### CV looks different in PDF
-- Use Chrome for best PDF export results
-- Set margins to 0.5 inches
-- Disable headers/footers in print settings
 
 ---
 
