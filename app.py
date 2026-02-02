@@ -43,9 +43,9 @@ from icons import get_icon, icon_with_text
 
 st.set_page_config(
     page_title="CV Crafter",
-    page_icon="🎯",
+    page_icon="favicon.svg",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # =============================================================================
@@ -121,20 +121,33 @@ st.markdown("""
         background-color: var(--bg-secondary);
     }
     
-    /* Tab styling */
+    /* Tab styling - button-like appearance */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
+        background-color: var(--bg-tertiary);
+        padding: 6px;
+        border-radius: 8px;
     }
     
     .stTabs [data-baseweb="tab"] {
+        background-color: transparent;
+        border-radius: 6px;
+        padding: 10px 20px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
         background-color: var(--bg-secondary);
-        border-radius: 4px;
-        padding: 8px 16px;
+        border-color: var(--border-color);
     }
     
     .stTabs [aria-selected="true"] {
         background-color: var(--accent) !important;
         color: #000 !important;
+        border-color: var(--accent) !important;
+        font-weight: 600;
     }
     
     /* Button styling */
@@ -195,6 +208,24 @@ st.markdown("""
     .section-title svg {
         color: var(--accent);
     }
+    
+    /* Wide layout for CV preview - minimize wasted space */
+    .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Compact inputs in generator */
+    .stTextInput input, .stTextArea textarea {
+        font-size: 0.9rem;
+    }
+    
+    /* Make preview area scroll nicely */
+    iframe {
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -242,6 +273,11 @@ def init_session_state():
     # CV display options
     if "cv_compact_mode" not in st.session_state:
         st.session_state.cv_compact_mode = "normal"
+    # Drawer state for editing CVs
+    if "editing_cv_id" not in st.session_state:
+        st.session_state.editing_cv_id = None
+    if "creating_new_cv" not in st.session_state:
+        st.session_state.creating_new_cv = False
 
 init_session_state()
 
@@ -624,7 +660,7 @@ def update_experience_bullets_in_html(html: str, exp_index: int, new_bullets: li
         return search_html
 
 def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_save_button=True, 
-                     show_open_browser=True, compact_mode_key=None):
+                     show_open_browser=True, compact_mode_key=None, force_mode=None):
     """
     Render a unified CV editor component.
     
@@ -635,6 +671,7 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
         show_save_button: Whether to show the save button
         show_open_browser: Whether to show the open in browser button
         compact_mode_key: Session state key for compact mode (if None, creates local state)
+        force_mode: If set, skip mode selector and use this mode ('preview', 'quick_edit', 'raw_html')
     
     Returns:
         The (potentially modified) HTML
@@ -648,32 +685,40 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
         st.session_state[compact_mode_key] = "normal"
     
     current_html = html
+    compact_mode = "normal"
     
-    # Edit mode selector
-    col_mode, col_density = st.columns([1, 1])
-    
-    with col_mode:
-        edit_mode = st.radio(
-            "Edit Mode",
-            options=["preview", "quick_edit", "raw_html"],
-            format_func=lambda x: {"preview": "👁️ Preview", "quick_edit": "✏️ Quick Edit", "raw_html": "💻 Raw HTML"}[x],
-            key=f"{key_prefix}_edit_mode",
-            horizontal=True
-        )
-    
-    with col_density:
+    # Mode selection
+    if force_mode:
+        # Skip selector, use forced mode
+        edit_mode = force_mode
         if compact_mode_key:
-            compact_mode = st.selectbox(
-                "Density",
-                options=["normal", "compact", "very_compact"],
-                format_func=lambda x: {"normal": "📄 Normal", "compact": "📑 Compact", "very_compact": "📃 Very Compact"}[x],
-                key=f"{key_prefix}_compact",
-                help="Reduce margins and font sizes to fit more content"
+            compact_mode = st.session_state.get(compact_mode_key, "normal")
+    else:
+        # Edit mode selector
+        col_mode, col_density = st.columns([1, 1])
+        
+        with col_mode:
+            edit_mode = st.radio(
+                "Edit Mode",
+                options=["preview", "quick_edit", "raw_html"],
+                format_func=lambda x: {"preview": "👁️ Preview", "quick_edit": "✏️ Quick Edit", "raw_html": "💻 Raw HTML"}[x],
+                key=f"{key_prefix}_edit_mode",
+                horizontal=True
             )
-            if compact_mode != st.session_state.get(compact_mode_key, "normal"):
-                st.session_state[compact_mode_key] = compact_mode
-        else:
-            compact_mode = "normal"
+        
+        with col_density:
+            if compact_mode_key:
+                compact_mode = st.selectbox(
+                    "Density",
+                    options=["normal", "compact", "very_compact"],
+                    format_func=lambda x: {"normal": "📄 Normal", "compact": "📑 Compact", "very_compact": "📃 Very Compact"}[x],
+                    key=f"{key_prefix}_compact",
+                    help="Reduce margins and font sizes to fit more content"
+                )
+                if compact_mode != st.session_state.get(compact_mode_key, "normal"):
+                    st.session_state[compact_mode_key] = compact_mode
+            else:
+                compact_mode = "normal"
     
     # Render based on mode
     if edit_mode == "preview":
@@ -744,16 +789,7 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
                             st.rerun()
         else:
             st.caption("No experience entries detected. Use Raw HTML mode to edit.")
-        
-        # Show preview below quick edit
-        st.divider()
-        st.markdown("##### Preview")
-        preview_html = current_html
-        if compact_mode != "normal":
-            compact_css = get_compact_mode_css(compact_mode)
-            if '</head>' in preview_html:
-                preview_html = preview_html.replace('</head>', compact_css + '</head>')
-        st.components.v1.html(preview_html, height=400, scrolling=True)
+
     
     elif edit_mode == "raw_html":
         edited_html = st.text_area(
@@ -793,109 +829,71 @@ def render_cv_editor(html: str, key_prefix: str, on_save_callback=None, show_sav
     return current_html
 
 
+
+
+
 # =============================================================================
-# SIDEBAR
+# PAGE HEADER
 # =============================================================================
 
-with st.sidebar:
-    # App title with icon
-    st.markdown(f'''<div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-        {get_icon("target", size=28, color="#00d4aa")}
-        <span style="font-size: 1.5rem; font-weight: 700;">CV Crafter</span>
+# Header row with title and settings
+header_cols = st.columns([6, 1])
+
+with header_cols[0]:
+    st.markdown(f'''<div style="display: flex; align-items: center; gap: 0.75rem;">
+        {get_icon("target", size=32, color="#00d4aa")}
+        <span style="font-size: 1.75rem; font-weight: 700;">CV Crafter</span>
     </div>''', unsafe_allow_html=True)
-    st.caption("AI-Powered CV Generator")
-    
-    st.divider()
-    
-    # API Key input
-    st.markdown(f'''<div class="icon-header" style="margin-top: 0.5rem;">
-        {get_icon("cpu", size=18, color="#00d4aa")}
-        <span style="font-weight: 600;">AI API Key</span>
-    </div>''', unsafe_allow_html=True)
-    api_key = st.text_input(
-        "Enter your Gemini or Claude API key",
-        type="password",
-        value=st.session_state.api_key,
-        help="Supports both Google Gemini and Anthropic Claude. Key is stored in session only."
-    )
-    
-    if api_key != st.session_state.api_key:
-        st.session_state.api_key = api_key
-        st.session_state.gemini_client = None
-    
-    if api_key:
-        # Show detected provider
-        provider = detect_api_provider(api_key)
-        provider_icon = "🤖" if provider == "gemini" else "🟣" if provider == "claude" else "❓"
-        provider_name = provider.title() if provider != "unknown" else "Unknown"
-        st.caption(f"{provider_icon} Detected provider: **{provider_name}**")
+
+with header_cols[1]:
+    with st.popover("⚙️ Settings", use_container_width=True):
+        st.subheader("AI Configuration")
         
-        if st.button("Test Connection", use_container_width=True, key="test_api_connection"):
-            with st.spinner("Testing..."):
-                client = AIClient(api_key)
-                success, message = client.test_connection()
-                if success:
-                    st.success(message)
-                    st.session_state.gemini_client = client
-                else:
-                    st.error(message)
-    
-    st.divider()
-    
-    # Quick stats
-    st.markdown(f'''<div class="icon-header">
-        {get_icon("bar-chart", size=18, color="#00d4aa")}
-        <span style="font-weight: 600;">Your Data</span>
-    </div>''', unsafe_allow_html=True)
-    experiences = load_experiences()
-    templates = load_templates()
-    applications = load_applications()
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Experiences", len(experiences.get("work_experiences", [])))
-        st.metric("Templates", len(templates.get("templates", [])))
-    with col2:
-        st.metric("Education", len(experiences.get("education", [])))
-        st.metric("Applications", len(applications))
-    
-    st.divider()
-    
-    # Model info - Dynamic based on provider
-    st.markdown(f'''<div class="icon-header">
-        {get_icon("zap", size=18, color="#00d4aa")}
-        <span style="font-weight: 600;">AI Models</span>
-    </div>''', unsafe_allow_html=True)
-    if api_key:
-        provider = detect_api_provider(api_key)
-        if provider == "claude":
-            st.markdown("""
-            <div style="background: #1a1f2e; border: 1px solid #2d3548; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem;">
-                <span style="color: #00d4aa; font-weight: 600;">Claude</span>
-                <div style="font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem;">Pro: claude-sonnet-4</div>
-                <div style="font-size: 0.8rem; color: #a0a0a0;">Fast: claude-3-5-haiku</div>
-            </div>
-            """, unsafe_allow_html=True)
+        api_key = st.text_input(
+            "API Key (Gemini or Claude)",
+            type="password",
+            value=st.session_state.api_key,
+            key="settings_api_key"
+        )
+        
+        if api_key != st.session_state.api_key:
+            st.session_state.api_key = api_key
+            st.session_state.gemini_client = None
+        
+        if api_key:
+            provider = detect_api_provider(api_key)
+            provider_name = provider.title() if provider != "unknown" else "Unknown"
+            st.caption(f"Provider: **{provider_name}**")
+            
+            if st.button("Test Connection", key="settings_test"):
+                with st.spinner("Testing..."):
+                    client = AIClient(api_key)
+                    success, message = client.test_connection()
+                    if success:
+                        st.success(message)
+                        st.session_state.gemini_client = client
+                    else:
+                        st.error(message)
+            
+            # Model info
+            st.divider()
+            if provider == "claude":
+                st.caption("Pro: claude-sonnet-4")
+                st.caption("Fast: claude-3-5-haiku")
+            else:
+                st.caption("Pro: gemini-3-pro-preview")
+                st.caption("Fast: gemini-2.0-flash")
         else:
-            st.markdown("""
-            <div style="background: #1a1f2e; border: 1px solid #2d3548; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem;">
-                <span style="color: #00d4aa; font-weight: 600;">Gemini</span>
-                <div style="font-size: 0.8rem; color: #a0a0a0; margin-top: 0.25rem;">Pro: gemini-3-pro-preview</div>
-                <div style="font-size: 0.8rem; color: #a0a0a0;">Fast: gemini-2.0-flash</div>
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.caption("Connect an API key to see models")
+            st.info("Enter your API key to enable AI features")
 
 # =============================================================================
-# MAIN CONTENT - TABS
+# MAIN CONTENT - TABS (3 tabs now)
 # =============================================================================
 
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📝 Experience Bank",
-    "🎨 Template Editor", 
-    "✨ CV Generator",
-    "📚 Applications & CVs"
+tab1, tab2, tab3 = st.tabs([
+    "Experience Bank",
+    "Templates", 
+    "CVs"
 ])
 
 # =============================================================================
@@ -1672,272 +1670,231 @@ with tab2:
             st.info("Select a template from the left panel or create a new one.")
 
 # =============================================================================
-# TAB 3: CV GENERATOR
+# TAB 3: UNIFIED CVs (Generator + Applications Combined)
 # =============================================================================
 
 with tab3:
-    section_header("sparkles", "CV Generator")
-    st.caption("Paste a job description, add any specific instructions, and let AI create a tailored CV.")
-    
-    if not st.session_state.api_key:
-        st.warning("⚠️ Please enter your Gemini API key in the sidebar to use the CV Generator.")
-    
-    col1, col2 = st.columns([1, 1])
-    
-    with col1:
-        st.subheader("Job Details")
-        
-        # Job info
-        job_company = st.text_input("Company Name", key="gen_company")
-        job_role = st.text_input("Role/Position", key="gen_role")
-        
-        job_description = st.text_area(
-            "Job Description",
-            placeholder="Paste the full job description here...",
-            height=250
-        )
-        
-        user_instructions = st.text_area(
-            "Additional Instructions (optional)",
-            placeholder="e.g., Emphasize my Python experience, highlight leadership roles...",
-            height=100
-        )
-        
-        # Page length target
-        limit_one_page = st.checkbox(
-            "📄 Limit to 1 page",
-            value=False,
-            help="AI will be more concise. Compact mode will be auto-applied."
-        )
-        
-        # Template selection
-        templates_data = load_templates()
-        templates_list = templates_data.get("templates", [])
-        template_options = {t["name"]: t["id"] for t in templates_list}
-        
-        if template_options:
-            selected_template_name = st.selectbox(
-                "Select Template",
-                options=list(template_options.keys())
-            )
-            selected_template_id = template_options[selected_template_name]
-        else:
-            st.warning("No templates found. Please create one in the Template Editor tab.")
-            selected_template_id = None
-        
-        # Generate button
-        st.divider()
-        
-        if st.button("Generate CV", use_container_width=True, type="primary", disabled=not st.session_state.api_key, key="generate_cv_btn"):
-            if job_description and selected_template_id:
-                with st.spinner("AI is crafting your CV..."):
-                    try:
-                        client = AIClient(st.session_state.api_key)
-                        experiences = load_experiences()
-                        template = get_template(selected_template_id)
-                        
-                        prompt = create_cv_prompt(
-                            experiences=experiences,
-                            job_description=job_description,
-                            user_instructions=user_instructions,
-                            template_html=template["html"] if template else "",
-                            limit_one_page=limit_one_page
-                        )
-                        
-                        response = client.generate_pro(prompt, SYSTEM_INSTRUCTION_CV)
-                        generated_html = extract_html_from_response(response)
-                        
-                        st.session_state.current_cv_html = generated_html
-                        st.session_state.cv_job_company = job_company
-                        st.session_state.cv_job_role = job_role
-                        st.session_state.cv_job_description = job_description
-                        st.session_state.cv_template_id = selected_template_id
-                        
-                        # Auto-apply compact mode if 1-page limit was requested
-                        if limit_one_page:
-                            st.session_state.cv_compact_mode = "compact"
-                        
-                        # Auto-save as draft to protect against page refresh
-                        draft_id = save_or_update_draft(
-                            company=job_company,
-                            role=job_role,
-                            job_description=job_description,
-                            generated_html=generated_html,
-                            template_id=selected_template_id,
-                            existing_draft_id=st.session_state.get("current_draft_id")
-                        )
-                        st.session_state.current_draft_id = draft_id
-                        
-                        st.success("CV generated! (Auto-saved as draft)")
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"Error generating CV: {e}")
-            else:
-                st.warning("Please provide a job description and select a template.")
-    
-    with col2:
-        st.subheader("Generated CV")
-        
-        if st.session_state.current_cv_html:
-            # Show draft status indicator
-            if st.session_state.get("current_draft_id"):
-                st.caption("💾 *Draft auto-saved* — use 'Save Application' to finalize")
-            
-            # Callback to save changes to session state
-            def save_cv_changes(new_html):
-                st.session_state.current_cv_html = new_html
-                # Also update the draft
-                draft_id = st.session_state.get("current_draft_id")
-                if draft_id:
-                    update_application(draft_id, {"generated_html": new_html})
-            
-            # Render the unified CV editor
-            render_cv_editor(
-                html=st.session_state.current_cv_html,
-                key_prefix="cv_gen",
-                on_save_callback=save_cv_changes,
-                show_save_button=False,
-                compact_mode_key="cv_compact_mode"
-            )
-            
-            # Additional action buttons specific to generator
-            col_save, col_regen = st.columns(2)
-            
-            with col_save:
-                if st.button("Save Application", use_container_width=True, key="cv_save_app", type="primary"):
-                    # Save with compact mode applied
-                    final_html = st.session_state.current_cv_html
-                    if st.session_state.cv_compact_mode != "normal":
-                        compact_css = get_compact_mode_css(st.session_state.cv_compact_mode)
-                        if '</head>' in final_html:
-                            final_html = final_html.replace('</head>', compact_css + '</head>')
-                        elif '</body>' in final_html:
-                            final_html = final_html.replace('</body>', compact_css + '</body>')
-                    
-                    # Promote draft to saved application
-                    draft_id = st.session_state.get("current_draft_id")
-                    if draft_id:
-                        update_application(draft_id, {
-                            "generated_html": final_html,
-                            "status": "created"
-                        })
-                        st.session_state.current_draft_id = None
-                    else:
-                        save_application(
-                            company=st.session_state.get("cv_job_company", "Unknown"),
-                            role=st.session_state.get("cv_job_role", "Unknown"),
-                            job_description=st.session_state.get("cv_job_description", ""),
-                            generated_html=final_html,
-                            template_id=st.session_state.get("cv_template_id", "")
-                        )
-                    st.success("Application saved!")
-            
-            with col_regen:
-                if st.button("🔄 Regenerate", use_container_width=True, key="cv_regenerate"):
-                    st.session_state.current_cv_html = ""
-                    st.session_state.cv_compact_mode = "normal"
-                    st.rerun()
-        else:
-            st.info("Fill in the job details and click 'Generate CV' to create your tailored CV.")
-            
-            # Show preview of what's in experience bank
-            st.divider()
-            st.caption("**Experience Bank Preview:**")
-            experiences = load_experiences()
-            
-            work_count = len(experiences.get("work_experiences", []))
-            edu_count = len(experiences.get("education", []))
-            skills_count = sum(len(v) for v in experiences.get("skills", {}).values())
-            
-            st.markdown(f"""
-            - 💼 **{work_count}** work experiences
-            - 🎓 **{edu_count}** education entries
-            - 🛠️ **{skills_count}** skills
-            """)
-            
-            if work_count == 0:
-                st.warning("⚠️ Add some experiences in the Experience Bank tab first!")
-
-# =============================================================================
-# TAB 4: APPLICATION HISTORY
-# =============================================================================
-
-with tab4:
-    section_header("folder", "Applications & CVs")
-    st.caption("Track all your job applications and their generated CVs.")
+    section_header("file-text", "CVs")
     
     applications = load_applications()
     
     # Stats Header
     stats = get_stats_summary()
-    if stats["total"] > 0:
-        st.markdown("""
-        <style>
-            .stats-header {
-                display: flex;
-                gap: 1rem;
-                margin-bottom: 1rem;
-                flex-wrap: wrap;
-            }
-            .stat-card {
-                background: linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%);
-                border: 1px solid #2d3548;
-                border-radius: 12px;
-                padding: 1rem 1.5rem;
-                min-width: 120px;
-                text-align: center;
-            }
-            .stat-value {
-                font-size: 2rem;
-                font-weight: 700;
-                color: #00d4aa;
-                line-height: 1;
-            }
-            .stat-label {
-                font-size: 0.75rem;
-                color: #a0a0a0;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-                margin-top: 0.25rem;
-            }
-            .stat-card.highlight {
-                border-color: #00d4aa;
-            }
-        </style>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="stats-header">
-            <div class="stat-card">
-                <div class="stat-value">{stats['total']}</div>
-                <div class="stat-label">Total CVs</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{stats['applied']}</div>
-                <div class="stat-label">Applied</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{stats['interviewing']}</div>
-                <div class="stat-label">Interviewing</div>
-            </div>
-            <div class="stat-card highlight">
-                <div class="stat-value">{stats['offers']}</div>
-                <div class="stat-label">Offers</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{stats['success_rate']}%</div>
-                <div class="stat-label">Success Rate</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+    <style>
+        .stats-header {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #1a1f2e 0%, #252b3b 100%);
+            border: 1px solid #2d3548;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            min-width: 100px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #00d4aa;
+            line-height: 1;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+        .stat-card.highlight {
+            border-color: #00d4aa;
+        }
+    </style>
+    """, unsafe_allow_html=True)
     
-    if not applications:
-        st.info("No applications yet. Generate a CV and save it to start tracking!")
-    else:
-        # Search/filter
-        search = st.text_input("🔍 Search applications", placeholder="Company or role...")
+    st.markdown(f"""
+    <div class="stats-header">
+        <div class="stat-card">
+            <div class="stat-value">{stats['total']}</div>
+            <div class="stat-label">Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{stats['applied']}</div>
+            <div class="stat-label">Applied</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{stats['interviewing']}</div>
+            <div class="stat-label">Interviewing</div>
+        </div>
+        <div class="stat-card highlight">
+            <div class="stat-value">{stats['offers']}</div>
+            <div class="stat-label">Offers</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{stats['success_rate']}%</div>
+            <div class="stat-label">Success</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Top actions
+    top_cols = st.columns([1, 4])
+    with top_cols[0]:
+        if st.button("+ New CV", type="primary", use_container_width=True):
+            st.session_state.creating_new_cv = True
+            st.session_state.editing_cv_id = None
+            st.session_state.current_cv_html = ""
+            st.rerun()
+    
+    with top_cols[1]:
+        search = st.text_input("Search", placeholder="Company or role...", label_visibility="collapsed")
+    
+    # Check if drawer should be open
+    drawer_open = st.session_state.creating_new_cv or st.session_state.editing_cv_id is not None
+    
+    if drawer_open:
+        # DRAWER MODE: Split layout
+        main_col, drawer_col = st.columns([3, 2])
         
+        with drawer_col:
+            st.markdown("---")
+            
+            # Drawer context
+            editing_app = None
+            if st.session_state.editing_cv_id:
+                editing_app = get_application(st.session_state.editing_cv_id)
+                st.subheader("Edit CV")
+            else:
+                st.subheader("Create New CV")
+            
+            # Pre-fill from existing app if editing
+            default_company = editing_app.get("company", "") if editing_app else ""
+            default_role = editing_app.get("role", "") if editing_app else ""
+            default_url = editing_app.get("role_url", "") if editing_app else ""
+            default_jd = editing_app.get("job_description", "") if editing_app else ""
+            default_template_id = editing_app.get("template_id", "") if editing_app else ""
+            
+            # Form fields
+            drawer_company = st.text_input("Company (optional)", value=default_company, key="drawer_company")
+            drawer_role = st.text_input("Role (optional)", value=default_role, key="drawer_role")
+            drawer_url = st.text_input("Job URL (optional)", value=default_url, key="drawer_url")
+            
+            # Template selection
+            templates_data = load_templates()
+            templates_list = templates_data.get("templates", [])
+            template_options = {t["name"]: t["id"] for t in templates_list}
+            
+            if template_options:
+                # Find default template name
+                default_template_name = None
+                if default_template_id:
+                    for t in templates_list:
+                        if t["id"] == default_template_id:
+                            default_template_name = t["name"]
+                            break
+                
+                drawer_template_name = st.selectbox(
+                    "Template",
+                    options=list(template_options.keys()),
+                    index=list(template_options.keys()).index(default_template_name) if default_template_name else 0,
+                    key="drawer_template"
+                )
+                drawer_template_id = template_options[drawer_template_name]
+            else:
+                st.warning("No templates. Create one in Templates tab.")
+                drawer_template_id = None
+            
+            drawer_jd = st.text_area("Job Description", value=default_jd, height=150, key="drawer_jd")
+            drawer_instructions = st.text_area("AI Instructions (optional)", height=80, key="drawer_instructions", 
+                                               placeholder="e.g., Emphasize Python experience...")
+            
+            limit_one_page = st.checkbox("Limit to 1 page", key="drawer_limit_page")
+            
+            btn_cols = st.columns(2)
+            with btn_cols[0]:
+                if st.button("Generate CV", type="primary", use_container_width=True, 
+                            disabled=not st.session_state.api_key or not drawer_template_id):
+                    with st.spinner("Generating..."):
+                        try:
+                            client = AIClient(st.session_state.api_key)
+                            experiences = load_experiences()
+                            template = get_template(drawer_template_id)
+                            
+                            prompt = create_cv_prompt(
+                                experiences=experiences,
+                                job_description=drawer_jd,
+                                user_instructions=drawer_instructions,
+                                template_html=template["html"] if template else "",
+                                limit_one_page=limit_one_page
+                            )
+                            
+                            response = client.generate_pro(prompt, SYSTEM_INSTRUCTION_CV)
+                            generated_html = extract_html_from_response(response)
+                            
+                            # Save or update
+                            company = drawer_company or "General"
+                            role = drawer_role or "CV Focus"
+                            
+                            if st.session_state.editing_cv_id:
+                                # Update existing
+                                update_application(st.session_state.editing_cv_id, {
+                                    "company": company,
+                                    "role": role,
+                                    "role_url": drawer_url,
+                                    "job_description": drawer_jd,
+                                    "generated_html": generated_html,
+                                    "template_id": drawer_template_id
+                                })
+                                st.success("CV regenerated!")
+                            else:
+                                # Create new
+                                save_application(
+                                    company=company,
+                                    role=role,
+                                    job_description=drawer_jd,
+                                    generated_html=generated_html,
+                                    template_id=drawer_template_id,
+                                    role_url=drawer_url
+                                )
+                                st.success("CV created!")
+                            
+                            # Close drawer
+                            st.session_state.creating_new_cv = False
+                            st.session_state.editing_cv_id = None
+                            st.rerun()
+                            
+                        except Exception as e:
+                            st.error(f"Error: {e}")
+            
+            with btn_cols[1]:
+                if st.button("Cancel", use_container_width=True):
+                    st.session_state.creating_new_cv = False
+                    st.session_state.editing_cv_id = None
+                    st.rerun()
+            
+            if not st.session_state.api_key:
+                st.info("Configure API key in ⚙️ Settings")
+        
+        with main_col:
+            # Show CV preview if editing
+            if st.session_state.editing_cv_id and editing_app:
+                if editing_app.get("generated_html"):
+                    st.markdown("**Current CV:**")
+                    render_cv_editor(
+                        html=editing_app["generated_html"],
+                        key_prefix=f"edit_{st.session_state.editing_cv_id}",
+                        on_save_callback=lambda h: update_application(st.session_state.editing_cv_id, {"generated_html": h}),
+                        show_save_button=False,
+                        compact_mode_key=None
+                    )
+            else:
+                st.info("Configure your new CV in the panel on the right, then click Generate.")
+    
+    else:
+        # NORMAL MODE: Full-width CV list
         filtered = applications
         if search:
             search_lower = search.lower()
@@ -1947,119 +1904,171 @@ with tab4:
                 or search_lower in app.get("role", "").lower()
             ]
         
-        st.caption(f"Showing {len(filtered)} of {len(applications)} applications")
-        
-        for app in filtered:
-            # Show draft badge in title
-            is_draft = app.get("status") == "draft"
-            draft_badge = "📝 " if is_draft else ""
+        if not filtered:
+            if applications:
+                st.caption("No CVs match your search.")
+            else:
+                st.info("No CVs yet. Click '+ New CV' to create one!")
+        else:
+            st.caption(f"Showing {len(filtered)} CV(s)")
             
-            with st.expander(
-                f"{draft_badge}**{app.get('company', 'Unknown')}** — {app.get('role', 'Unknown Role')} "
-                f"({app.get('created_at', '')[:10]})"
-            ):
-                col1, col2 = st.columns([1, 1])
+            for app in filtered:
+                is_draft = app.get("status") == "draft"
+                status_badge = f"[{app.get('status', 'created').upper()}]" if app.get('status') != 'created' else ""
                 
-                with col1:
-                    if is_draft:
-                        st.info("📝 This is a draft — not yet finalized")
-                    
-                    st.markdown("**Job Description:**")
-                    st.text_area(
-                        "JD",
-                        value=app.get("job_description", ""),
-                        height=150,
-                        key=f"jd_{app['id']}",
-                        disabled=True,
-                        label_visibility="collapsed"
-                    )
-                    
-                    # Status update
-                    status_options = ["draft", "created", "applied", "interviewing", "rejected", "offer"]
-                    current_status = app.get("status", "created")
-                    new_status = st.selectbox(
-                        "Status",
-                        options=status_options,
-                        index=status_options.index(current_status) if current_status in status_options else 0,
-                        key=f"status_{app['id']}"
-                    )
-                    
-                    if new_status != current_status:
-                        if st.button("Update Status", key=f"update_status_{app['id']}"):
-                            update_application(app["id"], {"status": new_status})
-                            st.success("Status updated!")
+                with st.expander(
+                    f"{'📝 ' if is_draft else ''}{app.get('company', 'General')} — {app.get('role', 'CV Focus')} "
+                    f"{status_badge} ({app.get('created_at', '')[:10]})"
+                ):
+                    # Action buttons at top
+                    action_cols = st.columns([1, 1, 1, 4])
+                    with action_cols[0]:
+                        if st.button("Edit", key=f"edit_{app['id']}", use_container_width=True):
+                            st.session_state.editing_cv_id = app['id']
+                            st.session_state.creating_new_cv = False
                             st.rerun()
-                
-                with col2:
-                    st.markdown("**Generated CV:**")
-                    if app.get("generated_html"):
-                        # Create a callback to save changes for this specific application
-                        app_id = app['id']
-                        
-                        def make_save_callback(aid):
-                            def save_callback(new_html):
-                                update_application(aid, {"generated_html": new_html})
-                            return save_callback
-                        
-                        # Render the unified CV editor
-                        render_cv_editor(
-                            html=app["generated_html"],
-                            key_prefix=f"app_{app['id']}",
-                            on_save_callback=make_save_callback(app_id),
-                            show_save_button=False,
-                            compact_mode_key=None  # No global compact mode for history items
+                    with action_cols[1]:
+                        if st.button("Open in Browser", key=f"open_{app['id']}", use_container_width=True):
+                            if app.get("generated_html"):
+                                open_cv_in_browser(app["generated_html"], f"cv_{app['id']}.html")
+                                st.info("Opened in browser!")
+                    with action_cols[2]:
+                        if st.button("Delete", key=f"del_{app['id']}", use_container_width=True):
+                            delete_application(app['id'])
+                            st.rerun()
+                    
+                    # Inline regenerate with instructions
+                    with st.expander("Regenerate with New Instructions"):
+                        regen_instructions = st.text_area(
+                            "Additional instructions for regeneration",
+                            placeholder="e.g., Make it more concise, emphasize leadership experience...",
+                            height=80,
+                            key=f"regen_instr_{app['id']}"
                         )
-                
-                # Bullet points for copy-pasting
-                if app.get("generated_html"):
-                    with st.expander("Copy Bullet Points (plain text)"):
-                        # Extract structured experiences
-                        extracted_exps = extract_experiences_from_html(app["generated_html"])
+                        if st.button("Regenerate CV", key=f"regen_{app['id']}", type="primary", 
+                                    disabled=not st.session_state.api_key):
+                            with st.spinner("Regenerating..."):
+                                try:
+                                    client = AIClient(st.session_state.api_key)
+                                    experiences = load_experiences()
+                                    template = get_template(app.get("template_id", ""))
+                                    
+                                    # Combine original JD with new instructions
+                                    combined_instructions = app.get("job_description", "")
+                                    if regen_instructions:
+                                        combined_instructions += f"\n\nADDITIONAL INSTRUCTIONS: {regen_instructions}"
+                                    
+                                    prompt = create_cv_prompt(
+                                        experiences=experiences,
+                                        job_description=combined_instructions,
+                                        user_instructions=regen_instructions,
+                                        template_html=template["html"] if template else "",
+                                        limit_one_page=False
+                                    )
+                                    
+                                    response = client.generate_pro(prompt, SYSTEM_INSTRUCTION_CV)
+                                    generated_html = extract_html_from_response(response)
+                                    
+                                    update_application(app['id'], {"generated_html": generated_html})
+                                    st.success("CV regenerated!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Error: {e}")
+                    
+                    # Role URL
+                    if app.get("role_url"):
+                        st.markdown(f"🔗 [View Job Posting]({app['role_url']})")
+                    
+                    # Status selector
+                    status_col, note_col = st.columns([1, 2])
+                    with status_col:
+                        status_options = ["draft", "created", "applied", "interviewing", "rejected", "offer"]
+                        current_status = app.get("status", "created")
+                        new_status = st.selectbox(
+                            "Status",
+                            options=status_options,
+                            index=status_options.index(current_status) if current_status in status_options else 1,
+                            key=f"status_{app['id']}"
+                        )
+                        if new_status != current_status:
+                            if st.button("Update", key=f"upd_status_{app['id']}"):
+                                update_application(app['id'], {"status": new_status})
+                                st.rerun()
+                    
+                    with note_col:
+                        notes = st.text_input("Notes", value=app.get("notes", ""), key=f"notes_{app['id']}")
+                        if notes != app.get("notes", ""):
+                            if st.button("Save Note", key=f"save_note_{app['id']}"):
+                                update_application(app['id'], {"notes": notes})
+                                st.success("Saved!")
+                    
+                    # CV Preview - full width with view modes
+                    if app.get("generated_html"):
+                        st.markdown("---")
                         
-                        if extracted_exps:
-                            sections = []
-                            total_bullets = 0
-                            for exp in extracted_exps:
-                                # Build header
-                                header_parts = []
-                                if exp.get("company"): header_parts.append(exp["company"])
-                                if exp.get("title"): header_parts.append(exp["title"])
-                                if exp.get("date"): header_parts.append(exp["date"])
+                        # View mode selector
+                        view_mode = st.radio(
+                            "View Mode",
+                            ["Preview", "Quick Edit", "HTML Edit", "Copy Bullets"],
+                            horizontal=True,
+                            key=f"view_mode_{app['id']}",
+                            label_visibility="collapsed"
+                        )
+                        
+                        if view_mode == "Preview":
+                            # Iframe preview
+                            st.components.v1.html(app["generated_html"], height=600, scrolling=True)
+                        
+                        elif view_mode == "Quick Edit":
+                            # Side-by-side: preview on left, bullet editor on right
+                            qe_cols = st.columns([3, 2])
+                            with qe_cols[0]:
+                                st.components.v1.html(app["generated_html"], height=800, scrolling=True)
+                            with qe_cols[1]:
+                                def make_save_cb(aid):
+                                    def cb(h):
+                                        update_application(aid, {"generated_html": h})
+                                    return cb
                                 
-                                header = " — ".join(header_parts)
-                                bullets_text = "\n".join([f"{b}" for b in exp["bullets"]])
-                                sections.append(f"{header}\n{bullets_text}")
-                                total_bullets += len(exp["bullets"])
-                            
-                            bullet_text = "\n\n".join(sections)
-                            
-                            st.text_area(
-                                "Bullet points (select all & copy)",
-                                value=bullet_text,
-                                height=300,
-                                key=f"bullets_{app['id']}",
-                                label_visibility="collapsed"
-                            )
-                            st.caption(f"{total_bullets} bullet points extracted from {len(extracted_exps)} sections")
-                        else:
-                            st.caption("No experience sections with bullet points found in this CV")
-                
-                # Notes
-                notes = st.text_area(
-                    "Notes",
-                    value=app.get("notes", ""),
-                    key=f"notes_{app['id']}",
-                    placeholder="Add notes about this application..."
-                )
-                
-                col_a, col_b = st.columns([1, 5])
-                with col_a:
-                    if st.button("Save Notes", key=f"save_notes_{app['id']}"):
-                        update_application(app["id"], {"notes": notes})
-                        st.success("Notes saved!")
-                
-                with col_b:
-                    if st.button("Delete Application", key=f"delete_app_{app['id']}"):
-                        delete_application(app["id"])
-                        st.success("Application deleted!")
-                        st.rerun()
+                                render_cv_editor(
+                                    html=app["generated_html"],
+                                    key_prefix=f"qe_{app['id']}",
+                                    on_save_callback=make_save_cb(app['id']),
+                                    show_save_button=False,
+                                    compact_mode_key=None,
+                                    force_mode="quick_edit"
+                                )
+                        
+                        elif view_mode == "HTML Edit":
+                            # Side-by-side HTML editor
+                            edit_cols = st.columns([3, 2])
+                            with edit_cols[0]:
+                                st.components.v1.html(app["generated_html"], height=500, scrolling=True)
+                            with edit_cols[1]:
+                                st.markdown("**HTML Editor**")
+                                edited_html = st.text_area(
+                                    "HTML",
+                                    value=app["generated_html"],
+                                    height=400,
+                                    key=f"he_html_{app['id']}",
+                                    label_visibility="collapsed"
+                                )
+                                if st.button("Save Changes", key=f"he_save_{app['id']}", type="primary"):
+                                    update_application(app['id'], {"generated_html": edited_html})
+                                    st.success("Saved!")
+                                    st.rerun()
+                        
+                        elif view_mode == "Copy Bullets":
+                            extracted = extract_experiences_from_html(app["generated_html"])
+                            if extracted:
+                                sections = []
+                                for exp in extracted:
+                                    header_parts = [p for p in [exp.get("company"), exp.get("title"), exp.get("date")] if p]
+                                    header = " — ".join(header_parts)
+                                    bullets = "\n".join(exp["bullets"])
+                                    sections.append(f"{header}\n{bullets}")
+                                st.text_area("Bullet points (select all & copy)", "\n\n".join(sections), height=300, key=f"bullets_{app['id']}")
+                                st.caption(f"{sum(len(e['bullets']) for e in extracted)} bullets from {len(extracted)} sections")
+                            else:
+                                st.caption("No bullet points found.")
+
