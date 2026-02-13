@@ -1963,7 +1963,8 @@ with tab3:
                                         job_description=combined_instructions,
                                         user_instructions=regen_instructions,
                                         template_html=template["html"] if template else "",
-                                        limit_one_page=False
+                                        limit_one_page=False,
+                                        current_html_content=app.get("generated_html", "")
                                     )
                                     
                                     response = client.generate_pro(prompt, SYSTEM_INSTRUCTION_CV)

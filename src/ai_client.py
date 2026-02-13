@@ -301,7 +301,8 @@ def create_cv_prompt(
     job_description: str,
     user_instructions: str = "",
     template_html: str = "",
-    limit_one_page: bool = False
+    limit_one_page: bool = False,
+    current_html_content: str = ""
 ) -> str:
     """Create the prompt for CV generation."""
     
@@ -322,6 +323,22 @@ def create_cv_prompt(
 - Include comprehensive details for relevant experiences
 - 3-5 bullet points per role is acceptable"""
     
+    # Context from current draft
+    current_draft_section = ""
+    if current_html_content:
+        # We perform a basic cleanup to meaningful text for the LLM to save tokens/noise
+        # In a real scenario, we might use BeautifulSoup to extract text, 
+        # but passing the raw HTML is usually fine for LLMs if it's not huge.
+        # Let's truncate if excessively large, but generally pass it.
+        current_draft_section = f"""
+## CURRENT DRAFT CV (REFERENCE FOR STYLE/CONTENT):
+The user has been editing this CV. Respect their manual changes where possible 
+unless the new instructions function specifically contradicts them.
+Use this as a baseline for tone and content selection.
+
+{current_html_content}
+"""
+
     prompt = f"""Based on the candidate's experience and the target job description, 
 create a tailored CV that highlights the most relevant qualifications.
 
@@ -330,7 +347,7 @@ create a tailored CV that highlights the most relevant qualifications.
 
 ## TARGET JOB DESCRIPTION:
 {job_description}
-
+{current_draft_section}
 ## ADDITIONAL INSTRUCTIONS FROM USER:
 {user_instructions if user_instructions else "None provided."}
 
